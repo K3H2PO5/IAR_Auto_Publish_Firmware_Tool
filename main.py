@@ -1,0 +1,1601 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+主应用程序
+IAR固件发布工具 - 带GUI界面的Windows应用程序
+"""
+
+__version__ = "1.0.0.3"
+
+import tkinter as tk
+from tkinter import ttk, scrolledtext, messagebox, filedialog
+import json
+import os
+import sys
+import logging
+import threading
+import queue
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+# 导入自定义模块
+from git_manager import GitManager
+from iar_builder import IARBuilder
+from binary_modifier import BinaryModifier
+from file_manager import FileManager
+from version_manager import VersionManager
+from main_c_updater import MainCUpdater
+from path_manager import PathManager
+from config_analyzer import ConfigAnalyzer
+from tool_version_manager import ToolVersionManager
+
+# 语言配置
+LANGUAGES = {
+    'zh_CN': {
+        'name': '简体中文',
+        'texts': {
+            'app_title': 'IAR固件发布工具',
+            'project_path': '项目路径:',
+            'iar_path': 'IAR路径:',
+            'check_git': '检查Git状态',
+            'check_version': '检查版本',
+            'start_build': '开始编译',
+            'open_settings': '设置',
+            'open_output': '打开输出目录',
+            'open_firmware': '打开固件目录',
+            'status_ready': '就绪',
+            'status_checking': '检查中...',
+            'status_building': '编译中...',
+            'project_info': '项目信息',
+            'firmware_version': '固件版本:',
+            'git_status': 'Git状态:',
+            'iar_path_display': 'IAR路径:',
+            'settings_title': '设置',
+            'project_settings': '项目设置',
+            'binary_settings': '二进制设置',
+            'iar_installation_path': 'IAR安装目录:',
+            'output_directory': '输出目录:',
+            'fw_publish_directory': '固件发布目录:',
+            'bin_start_address': 'bin起始地址:',
+            'config_file': '配置文件:',
+            'language': '语言:',
+            'select_directory': '选择目录',
+            'select': '选择',
+            'save': '保存',
+            'cancel': '取消',
+            'example_bin_address': '(例如: 0x8000000)',
+            'browse': '浏览',
+            'cleanup_output': '清理输出',
+            'log_output': '日志输出',
+            'success': '成功',
+            'error': '错误',
+            'warning': '警告',
+            'info': '信息',
+            'not_checked': '未检查',
+            'not_configured': '未配置',
+            'msg_error': '错误',
+            'msg_success': '成功',
+            'msg_warning': '警告',
+            'msg_info': '信息',
+            'msg_config_error': '配置错误',
+            'msg_config_incomplete': '配置不完整',
+            'msg_compile_failed': '编译失败',
+            'msg_modify_failed': '修改失败',
+            'msg_file_process_failed': '文件处理失败',
+            'msg_firmware_publish_failed': '固件发布失败',
+            'msg_firmware_publish_error': '固件发布异常',
+            'msg_cleanup_complete': '清理完成',
+            'msg_cleanup_failed': '清理失败',
+            'msg_settings_saved': '设置已保存',
+            'msg_bin_address_format_error': 'bin起始地址格式错误',
+            'msg_save_settings_failed': '保存设置失败',
+            'msg_select_directory_error': '选择目录时出错',
+            'msg_open_directory_failed': '打开目录失败',
+            'msg_open_firmware_directory_failed': '打开固件目录失败',
+            'msg_select_config_file_error': '选择配置文件时出错',
+            'msg_select_iar_directory_error': '选择IAR目录时出错',
+            'msg_not_git_repo': '当前目录不是Git仓库',
+            'msg_cannot_get_commit_id': '无法获取commit ID',
+            'msg_compile_success_no_bin': '编译成功但未找到输出bin文件',
+            'msg_compile_complete': '编译完成！',
+            'msg_compile_exception': '编译流程异常',
+            'msg_output_directory_not_exist': '输出目录不存在',
+            'msg_firmware_directory_not_exist': '固件发布目录不存在',
+            'msg_config_file_analysis_failed': '配置文件分析失败',
+            'msg_check_config_file_pragma': '请检查配置文件是否包含正确的#pragma location定义。',
+            'language_options': {
+                'zh_CN': '简体中文',
+                'zh_TW': '繁體中文',
+                'en_US': 'English'
+            }
+        }
+    },
+    'zh_TW': {
+        'name': '繁體中文',
+        'texts': {
+            'app_title': 'IAR固件發布工具',
+            'project_path': '專案路徑:',
+            'iar_path': 'IAR路徑:',
+            'check_git': '檢查Git狀態',
+            'check_version': '檢查版本',
+            'start_build': '開始編譯',
+            'open_settings': '設定',
+            'open_output': '開啟輸出目錄',
+            'open_firmware': '開啟固件目錄',
+            'status_ready': '就緒',
+            'status_checking': '檢查中...',
+            'status_building': '編譯中...',
+            'project_info': '專案資訊',
+            'firmware_version': '固件版本:',
+            'git_status': 'Git狀態:',
+            'iar_path_display': 'IAR路徑:',
+            'settings_title': '設定',
+            'project_settings': '專案設定',
+            'binary_settings': '二進位設定',
+            'iar_installation_path': 'IAR安裝目錄:',
+            'output_directory': '輸出目錄:',
+            'fw_publish_directory': '固件發布目錄:',
+            'bin_start_address': 'bin起始位址:',
+            'config_file': '配置檔案:',
+            'language': '語言:',
+            'select_directory': '選擇目錄',
+            'select': '選擇',
+            'save': '儲存',
+            'cancel': '取消',
+            'example_bin_address': '(例如: 0x8000000)',
+            'browse': '瀏覽',
+            'cleanup_output': '清理輸出',
+            'log_output': '日誌輸出',
+            'success': '成功',
+            'error': '錯誤',
+            'warning': '警告',
+            'info': '資訊',
+            'not_checked': '未檢查',
+            'not_configured': '未配置',
+            'msg_error': '錯誤',
+            'msg_success': '成功',
+            'msg_warning': '警告',
+            'msg_info': '資訊',
+            'msg_config_error': '配置錯誤',
+            'msg_config_incomplete': '配置不完整',
+            'msg_compile_failed': '編譯失敗',
+            'msg_modify_failed': '修改失敗',
+            'msg_file_process_failed': '檔案處理失敗',
+            'msg_firmware_publish_failed': '固件發布失敗',
+            'msg_firmware_publish_error': '固件發布異常',
+            'msg_cleanup_complete': '清理完成',
+            'msg_cleanup_failed': '清理失敗',
+            'msg_settings_saved': '設定已儲存',
+            'msg_bin_address_format_error': 'bin起始位址格式錯誤',
+            'msg_save_settings_failed': '儲存設定失敗',
+            'msg_select_directory_error': '選擇目錄時出錯',
+            'msg_open_directory_failed': '開啟目錄失敗',
+            'msg_open_firmware_directory_failed': '開啟固件目錄失敗',
+            'msg_select_config_file_error': '選擇配置檔案時出錯',
+            'msg_select_iar_directory_error': '選擇IAR目錄時出錯',
+            'msg_not_git_repo': '當前目錄不是Git倉庫',
+            'msg_cannot_get_commit_id': '無法獲取commit ID',
+            'msg_compile_success_no_bin': '編譯成功但未找到輸出bin檔案',
+            'msg_compile_complete': '編譯完成！',
+            'msg_compile_exception': '編譯流程異常',
+            'msg_output_directory_not_exist': '輸出目錄不存在',
+            'msg_firmware_directory_not_exist': '固件發布目錄不存在',
+            'msg_config_file_analysis_failed': '配置檔案分析失敗',
+            'msg_check_config_file_pragma': '請檢查配置檔案是否包含正確的#pragma location定義。',
+            'language_options': {
+                'zh_CN': '简体中文',
+                'zh_TW': '繁體中文',
+                'en_US': 'English'
+            }
+        }
+    },
+    'en_US': {
+        'name': 'English',
+        'texts': {
+            'app_title': 'IAR Firmware Publish Tool',
+            'project_path': 'Project Path:',
+            'iar_path': 'IAR Path:',
+            'check_git': 'Check Git Status',
+            'check_version': 'Check Version',
+            'start_build': 'Start Build',
+            'open_settings': 'Settings',
+            'open_output': 'Open Output Directory',
+            'open_firmware': 'Open Firmware Directory',
+            'status_ready': 'Ready',
+            'status_checking': 'Checking...',
+            'status_building': 'Building...',
+            'project_info': 'Project Info',
+            'firmware_version': 'Firmware Version:',
+            'git_status': 'Git Status:',
+            'iar_path_display': 'IAR Path:',
+            'settings_title': 'Settings',
+            'project_settings': 'Project Settings',
+            'binary_settings': 'Binary Settings',
+            'iar_installation_path': 'IAR Installation Path:',
+            'output_directory': 'Output Directory:',
+            'fw_publish_directory': 'Firmware Publish Directory:',
+            'bin_start_address': 'Bin Start Address:',
+            'config_file': 'Config File:',
+            'language': 'Language:',
+            'select_directory': 'Select Directory',
+            'select': 'Select',
+            'save': 'Save',
+            'cancel': 'Cancel',
+            'example_bin_address': '(e.g.: 0x8000000)',
+            'browse': 'Browse',
+            'cleanup_output': 'Clean Output',
+            'log_output': 'Log Output',
+            'success': 'Success',
+            'error': 'Error',
+            'warning': 'Warning',
+            'info': 'Info',
+            'not_checked': 'Not Checked',
+            'not_configured': 'Not Configured',
+            'msg_error': 'Error',
+            'msg_success': 'Success',
+            'msg_warning': 'Warning',
+            'msg_info': 'Info',
+            'msg_config_error': 'Configuration Error',
+            'msg_config_incomplete': 'Configuration Incomplete',
+            'msg_compile_failed': 'Compilation Failed',
+            'msg_modify_failed': 'Modification Failed',
+            'msg_file_process_failed': 'File Processing Failed',
+            'msg_firmware_publish_failed': 'Firmware Publish Failed',
+            'msg_firmware_publish_error': 'Firmware Publish Error',
+            'msg_cleanup_complete': 'Cleanup Complete',
+            'msg_cleanup_failed': 'Cleanup Failed',
+            'msg_settings_saved': 'Settings Saved',
+            'msg_bin_address_format_error': 'Bin Start Address Format Error',
+            'msg_save_settings_failed': 'Save Settings Failed',
+            'msg_select_directory_error': 'Error Selecting Directory',
+            'msg_open_directory_failed': 'Failed to Open Directory',
+            'msg_open_firmware_directory_failed': 'Failed to Open Firmware Directory',
+            'msg_select_config_file_error': 'Error Selecting Config File',
+            'msg_select_iar_directory_error': 'Error Selecting IAR Directory',
+            'msg_not_git_repo': 'Current directory is not a Git repository',
+            'msg_cannot_get_commit_id': 'Cannot get commit ID',
+            'msg_compile_success_no_bin': 'Compilation successful but no output bin file found',
+            'msg_compile_complete': 'Compilation Complete!',
+            'msg_compile_exception': 'Compilation Process Exception',
+            'msg_output_directory_not_exist': 'Output directory does not exist',
+            'msg_firmware_directory_not_exist': 'Firmware publish directory does not exist',
+            'msg_config_file_analysis_failed': 'Config file analysis failed',
+            'msg_check_config_file_pragma': 'Please check if the config file contains correct #pragma location definitions.',
+            'language_options': {
+                'zh_CN': '简体中文',
+                'zh_TW': '繁體中文',
+                'en_US': 'English'
+            }
+        }
+    }
+}
+
+
+class MCUAutoBuildApp:
+    """MCU自动编译工具主应用程序"""
+    
+    def __init__(self):
+        """初始化应用程序"""
+        self.root = tk.Tk()
+        self.config = {}
+        self.log_queue = queue.Queue()
+        
+        # 初始化语言设置
+        self.current_language = 'zh_CN'  # 默认简体中文
+        self.texts = LANGUAGES[self.current_language]['texts']
+        
+        # 初始化组件
+        self.git_manager = None
+        self.iar_builder = None
+        self.binary_modifier = None
+        self.file_manager = None
+        self.version_manager = None
+        self.main_c_updater = None
+        self.path_manager = None
+        self.config_analyzer = None
+        self.tool_version_manager = ToolVersionManager()
+        
+        # 设置窗口
+        self.setup_window()
+        
+        # 加载配置（包括语言设置）
+        self.load_config()
+        
+        # 创建界面（语言设置已生效）
+        self.create_widgets()
+        
+        # 加载用户配置到界面
+        self._load_user_config_to_ui()
+        
+        # 初始化日志
+        self.setup_logging()
+        
+        # 启动日志处理
+        self.process_log_queue()
+    
+    def set_language(self, language_code: str):
+        """设置语言"""
+        if language_code in LANGUAGES:
+            self.current_language = language_code
+            self.texts = LANGUAGES[language_code]['texts']
+            # 只有在logger初始化后才记录日志
+            if hasattr(self, 'logger'):
+                self.logger.info(f"语言已切换为: {LANGUAGES[language_code]['name']}")
+            else:
+                print(f"语言已切换为: {LANGUAGES[language_code]['name']}")
+            return True
+        return False
+    
+    def get_text(self, key: str) -> str:
+        """获取本地化文本"""
+        return self.texts.get(key, key)
+    
+    def setup_window(self):
+        """设置主窗口"""
+        # 获取工具版本
+        try:
+            tool_version_info = self.tool_version_manager.get_version_info()
+            tool_version = tool_version_info.get('version', '1.0.0.0')
+            if tool_version == '未知' or tool_version == '错误':
+                tool_version = '1.0.0.0'
+        except Exception as e:
+            self.log_message(f"获取工具版本失败: {e}")
+            tool_version = '1.0.0.0'
+        
+        self.root.title(f"{self.get_text('app_title')} v{tool_version}")
+        self.root.geometry("1000x700")
+        self.root.minsize(800, 600)
+        
+        # 设置窗口图标（如果有的话）
+        try:
+            # self.root.iconbitmap("icon.ico")
+            pass
+        except:
+            pass
+        
+        # 设置关闭事件
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+    
+    def load_config(self):
+        """加载配置文件"""
+        # 加载工具默认配置
+        default_config_path = "config.json"
+        user_config_path = "user_config.json"
+        
+        try:
+            # 加载默认配置
+            if os.path.exists(default_config_path):
+                with open(default_config_path, 'r', encoding='utf-8') as f:
+                    self.config = json.load(f)
+                self.log_message("默认配置文件加载成功")
+            else:
+                self.log_message("默认配置文件不存在，使用内置默认配置")
+                self.config = self.get_default_config()
+            
+            # 加载用户配置并合并
+            if os.path.exists(user_config_path):
+                with open(user_config_path, 'r', encoding='utf-8') as f:
+                    user_config = json.load(f)
+                self._merge_user_config(user_config)
+                self.log_message("用户配置文件加载成功")
+            else:
+                self.log_message("用户配置文件不存在，将创建新的用户配置")
+                self._create_user_config()
+            
+            # 优先加载语言设置（在界面创建之前）
+            if 'ui_settings' in self.config and 'language' in self.config['ui_settings']:
+                language = self.config['ui_settings']['language']
+                if language in LANGUAGES:
+                    self.set_language(language)
+                    self.log_message(f"语言设置已加载: {LANGUAGES[language]['name']}")
+                else:
+                    self.log_message(f"不支持的语言设置: {language}，使用默认语言")
+            else:
+                self.log_message("未找到语言设置，使用默认语言")
+            
+            # 初始化路径管理器和配置分析器 - 使用用户指定的项目路径
+            project_path = self.config.get('project_settings', {}).get('project_path', '')
+            if not project_path or not os.path.exists(project_path):
+                project_path = os.getcwd()  # 如果用户路径无效，使用当前工作目录
+                self.log_message(f"使用当前工作目录作为项目路径: {project_path}")
+            else:
+                self.log_message(f"使用用户指定的项目路径: {project_path}")
+            
+            self.path_manager = PathManager(project_path)
+            self.config_analyzer = ConfigAnalyzer()
+            self.config = self.path_manager.auto_find_paths(self.config)
+            
+            # 自动查找配置文件
+            if not self.config.get('binary_settings', {}).get('config_file'):
+                config_file = self.config_analyzer.find_config_file(project_path)
+                if config_file:
+                    self.config['binary_settings']['config_file'] = config_file
+                    self.log_message(f"自动找到配置文件: {config_file}")
+            
+        except Exception as e:
+            print(f"加载配置文件失败: {e}")
+            import traceback
+            print(f"详细错误信息: {traceback.format_exc()}")
+            self.config = self.get_default_config()
+    
+    def _merge_user_config(self, user_config: dict):
+        """合并用户配置到默认配置"""
+        try:
+            # 合并用户配置中的项目设置、二进制设置和UI设置
+            if 'project_settings' in user_config:
+                if 'project_settings' not in self.config:
+                    self.config['project_settings'] = {}
+                self.config['project_settings'].update(user_config['project_settings'])
+            
+            if 'binary_settings' in user_config:
+                if 'binary_settings' not in self.config:
+                    self.config['binary_settings'] = {}
+                self.config['binary_settings'].update(user_config['binary_settings'])
+            
+            if 'ui_settings' in user_config:
+                if 'ui_settings' not in self.config:
+                    self.config['ui_settings'] = {}
+                self.config['ui_settings'].update(user_config['ui_settings'])
+            
+            self.log_message("用户配置合并成功")
+        except Exception as e:
+            self.log_message(f"合并用户配置失败: {e}")
+    
+    def _create_user_config(self):
+        """创建用户配置文件"""
+        try:
+            user_config = {
+                "project_settings": {
+                    "iar_installation_path": "",
+                    "project_path": "",
+                    "output_directory": "./output",
+                    "fw_publish_directory": "./fw_publish",
+                    "info_file": ""
+                },
+                "binary_settings": {
+                    "bin_start_address": 134217728
+                },
+                "ui_settings": {
+                    "language": "zh_CN"
+                }
+            }
+            
+            with open("user_config.json", 'w', encoding='utf-8') as f:
+                json.dump(user_config, f, indent=4, ensure_ascii=False)
+            
+            self.log_message("用户配置文件创建成功")
+        except Exception as e:
+            self.log_message(f"创建用户配置文件失败: {e}")
+    
+    def _load_user_config_to_ui(self):
+        """将用户配置加载到界面"""
+        try:
+            # 加载项目路径
+            project_path = self.config.get('project_settings', {}).get('project_path', '')
+            if project_path:
+                self.project_path_var.set(project_path)
+                self.log_message(f"已加载项目路径: {project_path}")
+            
+            # 加载IAR路径并显示
+            iar_path = self.config.get('project_settings', {}).get('iar_installation_path', '')
+            if iar_path:
+                self.iar_path_display_var.set(iar_path)
+                self.log_message(f"已加载IAR路径: {iar_path}")
+            else:
+                self.iar_path_display_var.set("未配置")
+                self.log_message("IAR路径未配置")
+            
+            # 加载信息文件信息
+            info_file = self.config.get('project_settings', {}).get('info_file', '')
+            if info_file:
+                self.log_message(f"已加载信息文件: {info_file}")
+            
+            # 加载bin起始地址信息
+            bin_start_address = self.config.get('binary_settings', {}).get('bin_start_address', 0)
+            self.log_message(f"已加载bin起始地址: 0x{bin_start_address:08X}")
+            
+        except Exception as e:
+            self.log_message(f"加载用户配置到界面失败: {e}")
+    
+    def get_default_config(self):
+        """获取默认配置"""
+        return {
+            "binary_settings": {
+                "firmware_version_offset": 0,
+                "git_commit_id_offset": 0,
+                "file_size_offset": 0,
+                "bin_checksum_offset": 0,
+                "commit_id_size": 7,
+                "crc_size": 4,
+                "reserved_area_size": 512
+            },
+            "git_settings": {
+                "check_uncommitted_changes": True,
+                "auto_commit": False,
+                "commit_message_template": "Auto build: {timestamp}"
+            },
+            "build_settings": {
+                "build_configuration": "Debug",
+                "clean_before_build": False,
+                "timeout_seconds": 300
+            },
+            "ui_settings": {
+                "window_title": "IAR固件发布工具",
+                "window_size": "1000x700",
+                "theme": "default"
+            },
+            "version_settings": {
+                "version_pattern": r"V(\d)\.(\d)\.(\d)\.(\d)",
+                "max_version_parts": [9, 9, 9, 9],
+                "auto_increment": True,
+                "keep_firmware_count": 10
+            }
+        }
+    
+    def setup_logging(self):
+        """设置日志系统"""
+        # 创建日志目录
+        log_dir = "logs"
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # 配置日志
+        log_file = os.path.join(log_dir, f"build_{datetime.now().strftime('%Y%m%d')}.log")
+        
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_file, encoding='utf-8'),
+                logging.StreamHandler()
+            ]
+        )
+        
+        self.logger = logging.getLogger(__name__)
+        self.logger.info("应用程序启动")
+    
+    def create_widgets(self):
+        """创建界面组件"""
+        # 创建主框架
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # 配置网格权重
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(3, weight=1)
+        
+        # 标题
+        title_label = ttk.Label(main_frame, text=self.get_text('app_title'), 
+                               font=("Arial", 16, "bold"))
+        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        
+        # 项目信息框架
+        info_frame = ttk.LabelFrame(main_frame, text=self.get_text('project_info'), padding="10")
+        info_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        info_frame.columnconfigure(1, weight=1)
+        
+        # 项目路径
+        ttk.Label(info_frame, text=self.get_text('project_path')).grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        # 优先使用配置中的项目路径，如果没有则使用当前工作目录
+        initial_project_path = self.config.get('project_settings', {}).get('project_path', os.getcwd())
+        self.project_path_var = tk.StringVar(value=initial_project_path)
+        ttk.Entry(info_frame, textvariable=self.project_path_var, state="readonly").grid(
+            row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        ttk.Button(info_frame, text=self.get_text('browse'), command=self.browse_project_path).grid(row=0, column=2)
+        
+        # Git状态
+        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
+        self.git_status_var = tk.StringVar(value=self.get_text('not_checked'))
+        ttk.Label(info_frame, textvariable=self.git_status_var, foreground="orange").grid(
+            row=1, column=1, sticky=tk.W)
+        
+        
+        # IAR路径
+        ttk.Label(info_frame, text=self.get_text('iar_path_display')).grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
+        self.iar_path_display_var = tk.StringVar(value=self.get_text('not_configured'))
+        iar_path_label = ttk.Label(info_frame, textvariable=self.iar_path_display_var, foreground="green")
+        iar_path_label.grid(row=2, column=1, sticky=(tk.W, tk.E))
+        
+        # 固件版本
+        ttk.Label(info_frame, text=self.get_text('firmware_version')).grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
+        self.firmware_version_var = tk.StringVar(value=self.get_text('not_checked'))
+        ttk.Label(info_frame, textvariable=self.firmware_version_var, foreground="blue").grid(
+            row=3, column=1, sticky=tk.W)
+        
+        # 操作按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.grid(row=4, column=0, columnspan=3, pady=(0, 10))
+        
+        # 按钮
+        ttk.Button(button_frame, text=self.get_text('check_git'), command=self.check_git_status).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text=self.get_text('check_version'), command=self.check_version).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text=self.get_text('start_build'), command=self.start_build).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text=self.get_text('cleanup_output'), command=self.cleanup_output).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text=self.get_text('open_output'), command=self.open_output_directory).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text=self.get_text('open_firmware'), command=self.open_firmware_directory).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text=self.get_text('open_settings'), command=self.open_settings).pack(side=tk.LEFT)
+        
+        # 进度条
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, 
+                                          mode='indeterminate')
+        self.progress_bar.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # 日志输出框架
+        log_frame = ttk.LabelFrame(main_frame, text=self.get_text('log_output'), padding="5")
+        log_frame.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1)
+        
+        # 日志文本框
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=15, state="disabled")
+        self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # 状态栏
+        self.status_var = tk.StringVar(value="就绪")
+        status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN)
+        status_bar.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E))
+    
+    def log_message(self, message):
+        """添加日志消息"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        log_entry = f"[{timestamp}] {message}\n"
+        
+        # 添加到队列
+        self.log_queue.put(log_entry)
+    
+    def process_log_queue(self):
+        """处理日志队列"""
+        try:
+            while True:
+                message = self.log_queue.get_nowait()
+                self.log_text.config(state="normal")
+                self.log_text.insert(tk.END, message)
+                self.log_text.see(tk.END)
+                self.log_text.config(state="disabled")
+        except queue.Empty:
+            pass
+        
+        # 每100ms检查一次
+        self.root.after(100, self.process_log_queue)
+    
+    def update_status(self, message):
+        """更新状态栏"""
+        self.status_var.set(message)
+        self.log_message(message)
+    
+    def browse_project_path(self):
+        """浏览项目路径"""
+        try:
+            # 获取当前项目路径作为初始目录
+            initial_dir = self.project_path_var.get() or os.getcwd()
+            self.log_message(f"文件对话框初始目录: {initial_dir}")
+            
+            directory = filedialog.askdirectory(
+                title="选择项目目录",
+                initialdir=initial_dir
+            )
+            if directory:
+                self.project_path_var.set(directory)
+                self.log_message(f"选择项目路径: {directory}")
+                
+                # 更新配置
+                if 'project_settings' not in self.config:
+                    self.config['project_settings'] = {}
+                self.config['project_settings']['project_path'] = directory
+                
+                # 重新初始化PathManager以使用新的项目路径
+                self.path_manager = PathManager(directory)
+                self.config = self.path_manager.auto_find_paths(self.config)
+                self.log_message("已重新搜索项目文件")
+                
+                # 保存到配置文件
+                self.save_config()
+            else:
+                self.log_message("用户取消了目录选择")
+        except Exception as e:
+            self.log_message(f"选择目录时出错: {e}")
+            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_select_directory_error')}: {e}")
+    
+    def find_iar_executable(self, iar_dir: str) -> str:
+        """
+        在IAR安装目录中查找IarBuild.exe
+        
+        Args:
+            iar_dir: IAR安装目录
+            
+        Returns:
+            str: IarBuild.exe的完整路径，未找到返回空字符串
+        """
+        possible_paths = [
+            os.path.join(iar_dir, "bin", "IarBuild.exe"),
+            os.path.join(iar_dir, "IarBuild.exe"),
+            os.path.join(iar_dir, "arm", "bin", "IarBuild.exe"),
+            os.path.join(iar_dir, "EWARM", "bin", "IarBuild.exe")
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+        
+        return ""
+    
+    
+    def analyze_config_file(self, config_file_path: str):
+        """分析配置文件"""
+        try:
+            if not self.config_analyzer:
+                self.config_analyzer = ConfigAnalyzer()
+            
+            # 分析配置文件
+            binary_config = self.config_analyzer.analyze_config_file(config_file_path)
+            
+            # 更新配置
+            if 'binary_settings' not in self.config:
+                self.config['binary_settings'] = {}
+            
+            # 保存原有的bin_start_address
+            original_bin_start_address = self.config['binary_settings'].get('bin_start_address', 0)
+            
+            # 更新地址相关配置
+            self.config['binary_settings'].update(binary_config)
+            self.config['binary_settings']['config_file'] = config_file_path
+            
+            # 恢复bin_start_address
+            if original_bin_start_address != 0:
+                self.config['binary_settings']['bin_start_address'] = original_bin_start_address
+            
+            # 验证配置
+            is_valid, message = self.config_analyzer.validate_config(binary_config)
+            if is_valid:
+                self.log_message(f"配置文件分析成功: {message}")
+                self.log_message(f"__Firmware_Version地址: 0x{binary_config['firmware_version_offset']:X}")
+                self.log_message(f"__git_commit_id地址: 0x{binary_config['git_commit_id_offset']:X}")
+                self.log_message(f"__file_size地址: 0x{binary_config['file_size_offset']:X}")
+                self.log_message(f"__bin_checksum地址: 0x{binary_config['bin_checksum_offset']:X}")
+            else:
+                self.log_message(f"配置文件分析失败: {message}")
+                messagebox.showerror(self.get_text('msg_config_error'), f"{self.get_text('msg_config_file_analysis_failed')}:\n{message}\n\n{self.get_text('msg_check_config_file_pragma')}")
+                
+        except Exception as e:
+            self.log_message(f"分析配置文件失败: {e}")
+    
+    def save_config(self):
+        """保存用户配置到文件"""
+        try:
+            # 创建用户配置
+            user_config = {
+                "project_settings": {
+                    "iar_installation_path": self.config.get('project_settings', {}).get('iar_installation_path', ''),
+                    "project_path": self.project_path_var.get(),
+                    "output_directory": self.config.get('project_settings', {}).get('output_directory', './output'),
+                    "fw_publish_directory": self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'),
+                    "info_file": self.config.get('project_settings', {}).get('info_file', '')
+                },
+                "binary_settings": {
+                    "bin_start_address": self.config.get('binary_settings', {}).get('bin_start_address', 0)
+                },
+                "ui_settings": {
+                    "language": self.current_language
+                }
+            }
+            
+            # 保存信息文件文件名（只存储文件名，不存储路径）
+            info_file_path = self.config.get('project_settings', {}).get('info_file', '')
+            if info_file_path:
+                info_file_name = os.path.basename(info_file_path)
+                user_config['project_settings']['info_file'] = info_file_name
+            
+            # 保存到用户配置文件
+            with open("user_config.json", 'w', encoding='utf-8') as f:
+                json.dump(user_config, f, indent=4, ensure_ascii=False)
+            
+            # 更新内存中的配置
+            self._merge_user_config(user_config)
+            
+            self.log_message("用户配置已保存")
+        except Exception as e:
+            self.log_message(f"保存用户配置失败: {e}")
+    
+    def check_git_status(self):
+        """检查Git状态"""
+        def check_thread():
+            try:
+                self.update_status("检查Git状态中...")
+                self.progress_bar.start()
+                
+                # 初始化Git管理器
+                project_path = self.project_path_var.get()
+                self.git_manager = GitManager(project_path)
+                
+                # 重新初始化路径管理器并更新配置
+                self.path_manager = PathManager(project_path)
+                self.config = self.path_manager.auto_find_paths(self.config)
+                
+                # 从IAR项目文件中提取项目名称
+                iar_project_path = self.config.get('project_settings', {}).get('iar_project_path')
+                if iar_project_path and os.path.exists(iar_project_path):
+                    project_name = os.path.splitext(os.path.basename(iar_project_path))[0]
+                    self.config['project_settings']['project_name'] = project_name
+                    self.log_message(f"检测到项目名称: {project_name}")
+                
+                # 检查是否为Git仓库
+                if not self.git_manager.is_git_repo():
+                    self.git_status_var.set("不是Git仓库")
+                    self.update_status("当前目录不是Git仓库")
+                    return
+                
+                # 检查未提交更改
+                has_changes = self.git_manager.has_uncommitted_changes()
+                if has_changes:
+                    self.git_status_var.set("有未提交更改")
+                    self.update_status("检测到未提交的更改")
+                else:
+                    self.git_status_var.set("工作区干净")
+                    self.update_status("Git工作区干净，可以编译")
+                
+                # 获取commit信息
+                commit_info = self.git_manager.get_commit_info()
+                if commit_info['commit_id']:
+                    self.log_message(f"当前commit: {commit_info['short_commit_id']}")
+                    self.log_message(f"分支: {commit_info['branch']}")
+                    self.log_message(f"作者: {commit_info['author']}")
+                
+            except Exception as e:
+                self.log_message(f"检查Git状态失败: {e}")
+                self.git_status_var.set("检查失败")
+            finally:
+                self.progress_bar.stop()
+                self.update_status("Git状态检查完成")
+        
+        threading.Thread(target=check_thread, daemon=True).start()
+    
+    def check_version(self):
+        """检查固件版本"""
+        def check_thread():
+            try:
+                self.update_status("检查固件版本中...")
+                self.progress_bar.start()
+                
+                # 初始化版本管理器和main.c更新器
+                project_path = self.project_path_var.get()
+                fw_publish_dir = self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish')
+                
+                # 获取当前git分支
+                current_branch = None
+                if self.git_manager and self.git_manager.is_git_repo():
+                    git_info = self.git_manager.get_commit_info()
+                    current_branch = git_info.get('branch')
+                
+                self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
+                self.main_c_updater = MainCUpdater(self.config.get('version_settings', {}))
+                
+                # 从信息文件中读取当前版本
+                main_file_relative = self._find_info_file(self.project_path_var.get())
+                if main_file_relative:
+                    main_file_path = os.path.join(self.project_path_var.get(), main_file_relative)
+                    current_version = self.main_c_updater.extract_version_from_main_c(main_file_path)
+                else:
+                    current_version = None
+                
+                if current_version:
+                    self.log_message(f"当前代码版本: {current_version}")
+                    
+                    # 获取下一个版本号
+                    next_version, explanation = self.version_manager.get_next_version(current_version)
+                    self.log_message(f"建议下一个版本: {next_version}")
+                    self.log_message(explanation)
+                    
+                    # 更新界面显示
+                    self.firmware_version_var.set(f"{current_version} -> {next_version}")
+                else:
+                    self.log_message("无法从main.c中提取版本号")
+                    self.firmware_version_var.set("版本提取失败")
+                
+                # 列出已发布的固件
+                published_firmware = self.version_manager.list_published_firmware()
+                if published_firmware:
+                    self.log_message(f"已发布固件数量: {len(published_firmware)}")
+                    for i, fw in enumerate(published_firmware[:5]):  # 只显示前5个
+                        self.log_message(f"  {i+1}. {fw['filename']} (版本: {fw['version']})")
+                else:
+                    self.log_message("没有已发布的固件")
+                
+            except Exception as e:
+                self.log_message(f"检查版本失败: {e}")
+                self.firmware_version_var.set("检查失败")
+            finally:
+                self.progress_bar.stop()
+                self.update_status("版本检查完成")
+        
+        threading.Thread(target=check_thread, daemon=True).start()
+    
+    def _check_build_config(self):
+        """检查编译配置是否完整"""
+        missing_configs = []
+        
+        self.log_message("开始检查编译配置...")
+        
+        # 检查IAR安装路径
+        iar_path = self.config.get('project_settings', {}).get('iar_installation_path', '')
+        self.log_message(f"IAR路径: {iar_path}")
+        if not iar_path:
+            missing_configs.append("IAR安装路径")
+        
+        # 检查bin起始地址
+        bin_start_address = self.config.get('binary_settings', {}).get('bin_start_address', 0)
+        self.log_message(f"检查bin起始地址: 0x{bin_start_address:08X}")
+        if bin_start_address == 0:
+            missing_configs.append("bin起始地址")
+        
+        # 检查信息文件
+        info_file_name = self.config.get('project_settings', {}).get('info_file', '')
+        self.log_message(f"信息文件名: {info_file_name}")
+        if not info_file_name:
+            missing_configs.append("信息文件")
+        else:
+            # 基于文件名查找完整路径
+            project_path = self.config.get('project_settings', {}).get('project_path', '')
+            self.log_message(f"项目路径: {project_path}")
+            if not project_path:
+                missing_configs.append("项目路径")
+            else:
+                # 查找信息文件
+                info_file_path = self._find_config_file_path(project_path, info_file_name)
+                self.log_message(f"找到的信息文件路径: {info_file_path}")
+                if not info_file_path:
+                    missing_configs.append(f"未找到信息文件: {info_file_name}")
+                else:
+                    # 尝试分析配置文件
+                    if not self.config_analyzer:
+                        self.config_analyzer = ConfigAnalyzer()
+                    
+                    try:
+                        binary_config = self.config_analyzer.analyze_config_file(info_file_path)
+                        # 更新配置
+                        if 'binary_settings' not in self.config:
+                            self.config['binary_settings'] = {}
+                        self.config['binary_settings'].update(binary_config)
+                        
+                        # 检查地址是否已解析
+                        if (binary_config.get('firmware_version_offset', 0) == 0 or
+                            binary_config.get('git_commit_id_offset', 0) == 0 or
+                            binary_config.get('file_size_offset', 0) == 0 or
+                            binary_config.get('bin_checksum_offset', 0) == 0):
+                            missing_configs.append("配置文件中的地址定义")
+                    except Exception as e:
+                        missing_configs.append(f"配置文件分析失败: {e}")
+        
+        if missing_configs:
+            error_msg = f"编译配置不完整，缺少以下配置:\n{', '.join(missing_configs)}\n\n"
+            error_msg += "请点击'设置'按钮进行配置:\n"
+            error_msg += "1. 在'项目设置'中配置IAR安装目录和bin起始地址\n"
+            error_msg += "2. 在'项目设置'中选择信息文件（如main.c）\n"
+            error_msg += "3. 确保信息文件中包含正确的#pragma location定义"
+            
+            self.log_message(f"配置检查失败: {', '.join(missing_configs)}")
+            messagebox.showerror(self.get_text('msg_config_incomplete'), error_msg)
+            return False
+        
+        return True
+    
+    def _find_info_file(self, project_path: str) -> Optional[str]:
+        """
+        查找信息文件（支持多种扩展名：.c, .cpp, .cc, .h, .hpp）
+        
+        Args:
+            project_path: 项目路径
+            
+        Returns:
+            str: 信息文件相对路径，未找到返回None
+        """
+        # 首先尝试使用保存的信息文件名
+        saved_info_file = self.config.get('project_settings', {}).get('info_file', '')
+        if saved_info_file:
+            # 在项目路径中搜索该文件
+            search_paths = ['', 'app', 'src', 'source', 'inc', 'include']
+            for search_path in search_paths:
+                if search_path:
+                    full_path = os.path.join(project_path, search_path, saved_info_file)
+                    relative_path = os.path.join(search_path, saved_info_file)
+                else:
+                    full_path = os.path.join(project_path, saved_info_file)
+                    relative_path = saved_info_file
+                
+                if os.path.exists(full_path):
+                    self.log_message(f"使用保存的信息文件: {relative_path}")
+                    return relative_path
+            self.log_message(f"保存的信息文件不存在: {saved_info_file}，重新搜索...")
+        
+        # 支持的文件扩展名
+        extensions = ['.c', '.cpp', '.cc', '.h', '.hpp']
+        
+        # 可能的文件名
+        info_names = ['main', 'Main', 'MAIN']
+        
+        # 搜索路径（相对路径）
+        search_paths = [
+            '',  # 项目根目录
+            'app',
+            'src',
+            'source',
+            'Source',
+            'Src',
+            'inc',
+            'include',
+            'Include',
+            'Inc'
+        ]
+        
+        for search_path in search_paths:
+            for info_name in info_names:
+                for ext in extensions:
+                    # 构建文件路径
+                    if search_path:
+                        file_path = os.path.join(project_path, search_path, f"{info_name}{ext}")
+                        relative_path = os.path.join(search_path, f"{info_name}{ext}")
+                    else:
+                        file_path = os.path.join(project_path, f"{info_name}{ext}")
+                        relative_path = f"{info_name}{ext}"
+                    
+                    if os.path.exists(file_path):
+                        self.log_message(f"找到信息文件: {relative_path}")
+                        return relative_path
+        
+        self.log_message("未找到信息文件，请确保项目中有main.c/main.cpp/main.h等文件")
+        return None
+    
+    def _find_config_file_path(self, project_path: str, config_file_name: str) -> Optional[str]:
+        """
+        在项目路径中查找配置文件
+        
+        Args:
+            project_path: 项目路径
+            config_file_name: 配置文件名
+            
+        Returns:
+            str: 配置文件的完整路径，未找到返回None
+        """
+        if not project_path or not os.path.exists(project_path) or not config_file_name:
+            return None
+        
+        # 搜索路径
+        search_paths = ['', 'app', 'src', 'source', 'inc', 'include']
+        
+        for search_path in search_paths:
+            if search_path:
+                full_path = os.path.join(project_path, search_path, config_file_name)
+            else:
+                full_path = os.path.join(project_path, config_file_name)
+            
+            if os.path.exists(full_path):
+                self.log_message(f"找到配置文件: {full_path}")
+                return full_path
+        
+        self.log_message(f"未找到配置文件: {config_file_name}")
+        return None
+    
+    def start_build(self):
+        """开始编译流程"""
+        def build_thread():
+            try:
+                # 自动递增工具版本
+                new_tool_version = self.tool_version_manager.auto_increment_version()
+                if new_tool_version:
+                    # 更新窗口标题
+                    self.root.title(f"IAR固件发布工具 v{new_tool_version}")
+                    self.log_message(f"工具版本已自动递增到: {new_tool_version}")
+                
+                # 检查配置是否完整
+                if not self._check_build_config():
+                    return
+                
+                self.update_status("开始编译流程...")
+                self.progress_bar.start()
+                
+                # 1. 检查Git状态
+                project_path = self.project_path_var.get()
+                self.git_manager = GitManager(project_path)
+                
+                # 重新初始化路径管理器并更新配置
+                self.path_manager = PathManager(project_path)
+                self.config = self.path_manager.auto_find_paths(self.config)
+                
+                # 从IAR项目文件中提取项目名称
+                iar_project_path = self.config.get('project_settings', {}).get('iar_project_path')
+                if iar_project_path and os.path.exists(iar_project_path):
+                    project_name = os.path.splitext(os.path.basename(iar_project_path))[0]
+                    self.config['project_settings']['project_name'] = project_name
+                    self.log_message(f"检测到项目名称: {project_name}")
+                
+                if not self.git_manager.is_git_repo():
+                    messagebox.showerror(self.get_text('msg_error'), self.get_text('msg_not_git_repo'))
+                    return
+                
+                # 2. 获取版本信息并自动更新
+                fw_publish_dir = self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish')
+                
+                # 获取当前git分支
+                current_branch = None
+                if self.git_manager and self.git_manager.is_git_repo():
+                    git_info = self.git_manager.get_commit_info()
+                    current_branch = git_info.get('branch')
+                
+                self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
+                self.main_c_updater = MainCUpdater(self.config.get('version_settings', {}))
+                main_file_relative = self._find_info_file(project_path)
+                if main_file_relative:
+                    main_file_path = os.path.join(project_path, main_file_relative)
+                    current_version = self.main_c_updater.extract_version_from_main_c(main_file_path)
+                else:
+                    current_version = None
+                
+                if current_version:
+                    next_version, explanation = self.version_manager.get_next_version(current_version)
+                    self.log_message(f"当前版本: {current_version}")
+                    self.log_message(f"下一个版本: {next_version}")
+                    self.log_message(explanation)
+                else:
+                    next_version = "V0.0.0.1"
+                    self.log_message(f"无法提取版本，使用默认版本: {next_version}")
+                
+                # 更新界面显示
+                self.firmware_version_var.set(f"{current_version or '未知'} -> {next_version}")
+                
+                # 3. 检查是否有未提交的更改并提交
+                has_changes = self.git_manager.has_uncommitted_changes()
+                if has_changes:
+                    self.update_status("提交更改...")
+                    commit_message = f"自动发布{next_version}版本"
+                    self.log_message(f"准备提交: {commit_message}")
+                    if self.git_manager.commit_changes(commit_message):
+                        self.log_message(f"Git提交成功: {commit_message}")
+                    else:
+                        self.log_message("Git提交失败，但继续编译流程")
+                else:
+                    self.log_message("没有未提交的更改")
+                
+                # 4. 如果版本号需要更新，更新信息文件
+                if current_version and next_version != current_version:
+                    self.update_status("更新版本号...")
+                    main_file_relative = self._find_info_file(project_path)
+                    if main_file_relative:
+                        main_file_path = os.path.join(project_path, main_file_relative)
+                        success, message = self.main_c_updater.update_version_in_main_c(main_file_path, next_version)
+                    else:
+                        success, message = False, "未找到信息文件"
+                    if success:
+                        self.log_message(f"版本号更新成功: {message}")
+                        
+                        # 再次提交版本号更改到Git
+                        self.update_status("提交版本号更改...")
+                        commit_message = f"更新版本号到{next_version}"
+                        self.log_message(f"准备提交: {commit_message}")
+                        if self.git_manager.commit_changes(commit_message):
+                            self.log_message(f"Git提交成功: {commit_message}")
+                        else:
+                            self.log_message("Git提交失败，但继续编译流程")
+                    else:
+                        self.log_message(f"版本号更新失败: {message}")
+                        # 继续使用原版本号
+                        next_version = current_version
+                
+                # 4. 检查是否还有其他未提交的更改
+                has_changes = self.git_manager.has_uncommitted_changes()
+                if has_changes:
+                    result = messagebox.askyesno("确认", 
+                                               "检测到未提交的更改，是否继续编译？\n建议先提交更改。")
+                    if not result:
+                        return
+                
+                # 5. 获取commit ID（使用7位短ID，与SourceTree一致）
+                commit_id = self.git_manager.get_short_commit_id(7)
+                if not commit_id:
+                    messagebox.showerror(self.get_text('msg_error'), self.get_text('msg_cannot_get_commit_id'))
+                    return
+                
+                self.log_message(f"使用commit ID: {commit_id}")
+                
+                # 6. 初始化IAR编译器
+                self.iar_builder = IARBuilder(self.config['project_settings'])
+                
+                # 7. 智能编译项目
+                self.update_status("编译项目中...")
+                # 记录编译开始时间
+                compile_start_time = datetime.now()
+                # 判断是否只有版本号变化
+                # 如果版本号相同，说明没有版本号变化，应该使用增量编译
+                # 如果版本号不同，说明有版本号变化，也应该使用增量编译
+                # 只有在没有版本号信息时才使用清理编译
+                only_version_changed = current_version is not None
+                success, message = self.iar_builder.smart_build(only_version_changed)
+                
+                if not success:
+                    messagebox.showerror(self.get_text('msg_compile_failed'), message)
+                    return
+                
+                # 获取bin文件信息
+                bin_info = self.iar_builder.get_bin_file_info()
+                
+                if not bin_info['exists']:
+                    messagebox.showerror(self.get_text('msg_compile_failed'), self.get_text('msg_compile_success_no_bin'))
+                    return
+                
+                self.log_message("编译成功")
+                
+                # 8. 修改二进制文件
+                self.update_status("修改二进制文件...")
+                self.binary_modifier = BinaryModifier(self.config['binary_settings'])
+                
+                # 记录二进制文件信息
+                self.log_message(f"准备修改二进制文件: {bin_info['path']}")
+                self.log_message(f"文件大小: {bin_info['size']} 字节")
+                self.log_message(f"Commit ID: {commit_id}")
+                
+                # 获取固件版本
+                firmware_version = self.firmware_version_var.get()
+                if firmware_version == "未检查":
+                    firmware_version = None
+                
+                success, message, mod_info = self.binary_modifier.modify_binary_file(
+                    bin_info['path'], commit_id, firmware_version)
+                
+                if not success:
+                    self.log_message(f"二进制文件修改失败: {message}")
+                    messagebox.showerror(self.get_text('msg_modify_failed'), message)
+                    return
+                
+                self.log_message("二进制文件修改成功")
+                self.log_message(f"修改详情: {message}")
+                
+                # 9. 处理文件
+                self.update_status("处理输出文件...")
+                self.file_manager = FileManager(self.config['project_settings'], project_path)
+                
+                success, message, file_info = self.file_manager.process_bin_file(
+                    bin_info['path'], commit_id, version=next_version)
+                
+                if not success:
+                    messagebox.showerror(self.get_text('msg_file_process_failed'), message)
+                    return
+                
+                self.log_message("文件处理成功")
+                
+                # 10. 发布固件到fw_publish目录
+                self.update_status("发布固件...")
+                try:
+                    success, message, publish_info = self.file_manager.publish_firmware(
+                        bin_info['path'], commit_id, next_version)
+                    
+                    if not success:
+                        self.log_message(f"固件发布失败: {message}")
+                        messagebox.showerror(self.get_text('msg_firmware_publish_failed'), message)
+                        return
+                    
+                    self.log_message("固件发布成功")
+                    self.log_message(f"发布详情: {message}")
+                except Exception as e:
+                    error_msg = f"发布固件时发生异常: {e}"
+                    self.log_message(error_msg)
+                    messagebox.showerror(self.get_text('msg_firmware_publish_error'), error_msg)
+                    return
+                
+                # 11. 完成
+                self.update_status("编译流程完成")
+                # 计算编译时间
+                compile_end_time = datetime.now()
+                compile_duration = compile_end_time - compile_start_time
+                compile_time_str = f"{compile_duration.total_seconds():.1f}秒"
+                
+                success_message = f"{self.get_text('msg_compile_complete')}\n\n编译时间: {compile_time_str}\n\n{message}"
+                messagebox.showinfo(self.get_text('msg_success'), success_message)
+                
+            except Exception as e:
+                self.log_message(f"编译流程异常: {e}")
+                messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_compile_exception')}: {e}")
+            finally:
+                self.progress_bar.stop()
+        
+        threading.Thread(target=build_thread, daemon=True).start()
+    
+    def cleanup_output(self):
+        """清理输出目录"""
+        try:
+            if not self.file_manager:
+                self.file_manager = FileManager(self.config['project_settings'])
+            
+            deleted_count = self.file_manager.cleanup_old_files(keep_count=5)
+            self.log_message(f"清理完成，删除了 {deleted_count} 个旧文件")
+            messagebox.showinfo(self.get_text('msg_cleanup_complete'), f"删除了 {deleted_count} 个旧文件")
+        except Exception as e:
+            self.log_message(f"清理失败: {e}")
+            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_cleanup_failed')}: {e}")
+    
+    def open_output_directory(self):
+        """打开输出目录"""
+        try:
+            output_dir = self.config['project_settings']['output_directory']
+            if os.path.exists(output_dir):
+                os.startfile(output_dir)
+            else:
+                messagebox.showwarning(self.get_text('msg_warning'), self.get_text('msg_output_directory_not_exist'))
+        except Exception as e:
+            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_open_directory_failed')}: {e}")
+    
+    def open_firmware_directory(self):
+        """打开固件发布目录"""
+        try:
+            fw_publish_dir = self.config['project_settings'].get('fw_publish_directory', './fw_publish')
+            if os.path.exists(fw_publish_dir):
+                os.startfile(fw_publish_dir)
+            else:
+                messagebox.showwarning(self.get_text('msg_warning'), self.get_text('msg_firmware_directory_not_exist'))
+        except Exception as e:
+            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_open_firmware_directory_failed')}: {e}")
+    
+    def open_settings(self):
+        """打开设置窗口"""
+        settings_window = tk.Toplevel(self.root)
+        settings_window.title(self.get_text('settings_title'))
+        settings_window.geometry("600x550")
+        settings_window.resizable(True, True)
+        
+        # 使设置窗口居中
+        settings_window.transient(self.root)
+        settings_window.grab_set()
+        
+        # 创建主框架
+        main_frame = ttk.Frame(settings_window, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 语言设置部分
+        language_group = ttk.LabelFrame(main_frame, text=self.get_text('language'), padding="10")
+        language_group.pack(fill=tk.X, pady=(0, 10))
+        
+        # 语言选择
+        ttk.Label(language_group, text=self.get_text('language')).grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.settings_language_var = tk.StringVar(value=self.current_language)
+        language_combo = ttk.Combobox(language_group, textvariable=self.settings_language_var, 
+                                    values=list(LANGUAGES.keys()), state="readonly", width=20)
+        language_combo.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        language_combo.bind('<<ComboboxSelected>>', lambda e: self.on_language_changed(settings_window))
+        
+        # 项目设置部分
+        project_group = ttk.LabelFrame(main_frame, text=self.get_text('project_settings'), padding="10")
+        project_group.pack(fill=tk.X, pady=(0, 10))
+        
+        # IAR安装路径
+        ttk.Label(project_group, text=self.get_text('iar_installation_path')).grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.settings_iar_path_var = tk.StringVar(value=self.config.get('project_settings', {}).get('iar_installation_path', ''))
+        ttk.Entry(project_group, textvariable=self.settings_iar_path_var, state="readonly", width=35).grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Button(project_group, text=self.get_text('select_directory'), command=self.browse_iar_path_settings).grid(row=0, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # 输出目录
+        ttk.Label(project_group, text=self.get_text('output_directory')).grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.settings_output_dir_var = tk.StringVar(value=self.config.get('project_settings', {}).get('output_directory', './output'))
+        ttk.Entry(project_group, textvariable=self.settings_output_dir_var, width=35).grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # 固件发布目录
+        ttk.Label(project_group, text=self.get_text('fw_publish_directory')).grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.settings_fw_publish_dir_var = tk.StringVar(value=self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'))
+        ttk.Entry(project_group, textvariable=self.settings_fw_publish_dir_var, width=35).grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # 二进制设置部分
+        binary_group = ttk.LabelFrame(main_frame, text=self.get_text('binary_settings'), padding="10")
+        binary_group.pack(fill=tk.X, pady=(0, 10))
+        
+        # bin起始地址配置
+        ttk.Label(binary_group, text=self.get_text('bin_start_address')).grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.settings_bin_start_address_var = tk.StringVar(value=f"0x{self.config.get('binary_settings', {}).get('bin_start_address', 0):X}")
+        ttk.Entry(binary_group, textvariable=self.settings_bin_start_address_var, width=20).grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Label(binary_group, text=self.get_text('example_bin_address'), foreground="gray").grid(row=0, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # 配置文件路径
+        ttk.Label(binary_group, text=self.get_text('config_file')).grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.settings_config_file_var = tk.StringVar(value=self.config.get('project_settings', {}).get('info_file', ''))
+        ttk.Entry(binary_group, textvariable=self.settings_config_file_var, state="readonly", width=35).grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Button(binary_group, text=self.get_text('select'), command=self.browse_config_file_settings).grid(row=1, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # 按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(20, 0))
+        
+        ttk.Button(button_frame, text=self.get_text('save'), command=lambda: self.save_settings(settings_window)).pack(side=tk.RIGHT, padx=(5, 0))
+        ttk.Button(button_frame, text=self.get_text('cancel'), command=settings_window.destroy).pack(side=tk.RIGHT)
+    
+    def on_language_changed(self, settings_window):
+        """语言切换回调函数"""
+        new_language = self.settings_language_var.get()
+        if new_language != self.current_language:
+            self.set_language(new_language)
+            # 重新创建整个界面以应用新语言
+            settings_window.destroy()
+            self.refresh_ui()
+            self.open_settings()
+    
+    def refresh_ui(self):
+        """刷新UI界面"""
+        # 更新窗口标题
+        try:
+            tool_version_info = self.tool_version_manager.get_version_info()
+            tool_version = tool_version_info.get('version', '1.0.0.0')
+            if tool_version == '未知' or tool_version == '错误':
+                tool_version = '1.0.0.0'
+        except Exception:
+            tool_version = '1.0.0.0'
+        
+        self.root.title(f"{self.get_text('app_title')} v{tool_version}")
+        
+        # 重新创建所有组件
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        
+        self.create_widgets()
+        self._load_user_config_to_ui()
+    
+    def browse_config_file_settings(self):
+        """在设置窗口中浏览配置文件"""
+        try:
+            # 获取当前配置文件路径作为初始目录
+            current_config = self.settings_config_file_var.get()
+            if current_config and os.path.exists(current_config):
+                initial_dir = os.path.dirname(current_config)
+            else:
+                # 尝试从项目路径开始查找
+                project_path = self.config.get('project_settings', {}).get('project_path', '')
+                initial_dir = project_path if project_path and os.path.exists(project_path) else os.getcwd()
+            
+            self.log_message(f"配置文件对话框初始目录: {initial_dir}")
+            
+            file_path = filedialog.askopenfilename(
+                title="选择配置文件",
+                filetypes=[("C文件", "*.c"), ("头文件", "*.h"), ("所有文件", "*.*")],
+                initialdir=initial_dir
+            )
+            if file_path:
+                self.settings_config_file_var.set(file_path)
+                self.log_message(f"选择配置文件: {file_path}")
+            else:
+                self.log_message("用户取消了文件选择")
+        except Exception as e:
+            self.log_message(f"选择配置文件时出错: {e}")
+            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_select_config_file_error')}: {e}")
+    
+    def browse_iar_path_settings(self):
+        """在设置窗口中浏览IAR安装路径"""
+        try:
+            # 获取当前IAR路径作为初始目录
+            current_iar = self.settings_iar_path_var.get()
+            if current_iar and os.path.exists(current_iar):
+                initial_dir = os.path.dirname(current_iar)
+            else:
+                # 使用常见的IAR安装路径
+                common_paths = [
+                    "C:/Program Files (x86)/IAR Systems",
+                    "C:/Program Files/IAR Systems",
+                    "D:/Program Files (x86)/IAR Systems",
+                    "D:/Program Files/IAR Systems"
+                ]
+                initial_dir = None
+                for path in common_paths:
+                    if os.path.exists(path):
+                        initial_dir = path
+                        break
+                if not initial_dir:
+                    initial_dir = "C:/Program Files (x86)"
+            
+            self.log_message(f"IAR路径对话框初始目录: {initial_dir}")
+            
+            directory = filedialog.askdirectory(
+                title="选择IAR安装目录",
+                initialdir=initial_dir
+            )
+            if directory:
+                # 查找IAR可执行文件
+                iar_exe = self.find_iar_executable(directory)
+                if iar_exe:
+                    self.settings_iar_path_var.set(iar_exe)
+                    self.log_message(f"找到IAR可执行文件: {iar_exe}")
+                else:
+                    self.settings_iar_path_var.set(directory)
+                    self.log_message(f"选择IAR目录: {directory}")
+            else:
+                self.log_message("用户取消了目录选择")
+        except Exception as e:
+            self.log_message(f"选择IAR目录时出错: {e}")
+            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_select_iar_directory_error')}: {e}")
+    
+    def save_settings(self, settings_window):
+        """保存设置"""
+        try:
+            # 更新配置
+            if 'binary_settings' not in self.config:
+                self.config['binary_settings'] = {}
+            if 'project_settings' not in self.config:
+                self.config['project_settings'] = {}
+            
+            # 解析bin起始地址
+            bin_start_address_str = self.settings_bin_start_address_var.get().strip()
+            if bin_start_address_str.startswith('0x') or bin_start_address_str.startswith('0X'):
+                bin_start_address = int(bin_start_address_str, 16)
+            else:
+                bin_start_address = int(bin_start_address_str)
+            
+            # 更新配置
+            self.config['binary_settings']['bin_start_address'] = bin_start_address
+            self.config['project_settings']['iar_installation_path'] = self.settings_iar_path_var.get()
+            self.config['project_settings']['output_directory'] = self.settings_output_dir_var.get()
+            self.config['project_settings']['fw_publish_directory'] = self.settings_fw_publish_dir_var.get()
+            
+            # 保存语言设置到user_config.json
+            if hasattr(self, 'settings_language_var'):
+                self.set_language(self.settings_language_var.get())
+            
+            # 保存信息文件文件名（只存储文件名，不存储路径）
+            info_file_path = self.settings_config_file_var.get()
+            if info_file_path:
+                info_file_name = os.path.basename(info_file_path)
+                self.config['project_settings']['info_file'] = info_file_name
+            
+            # 创建用户配置
+            user_config = {
+                "project_settings": {
+                    "iar_installation_path": self.config.get('project_settings', {}).get('iar_installation_path', ''),
+                    "project_path": self.config.get('project_settings', {}).get('project_path', ''),
+                    "output_directory": self.config.get('project_settings', {}).get('output_directory', './output'),
+                    "fw_publish_directory": self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'),
+                    "info_file": self.config.get('project_settings', {}).get('info_file', '')
+                },
+                "binary_settings": {
+                    "bin_start_address": self.config.get('binary_settings', {}).get('bin_start_address', 0)
+                },
+                "ui_settings": {
+                    "language": self.current_language
+                }
+            }
+            
+            # 保存到用户配置文件
+            with open("user_config.json", 'w', encoding='utf-8') as f:
+                json.dump(user_config, f, indent=4, ensure_ascii=False)
+            
+            # 更新主界面的IAR路径显示
+            iar_path = self.config.get('project_settings', {}).get('iar_installation_path', '')
+            if iar_path:
+                self.iar_path_display_var.set(iar_path)
+            else:
+                self.iar_path_display_var.set("未配置")
+            
+            self.log_message(f"设置已保存: bin起始地址=0x{bin_start_address:08X}")
+            messagebox.showinfo(self.get_text('msg_settings_saved'), self.get_text('msg_settings_saved'))
+            settings_window.destroy()
+            
+        except ValueError as e:
+            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_bin_address_format_error')}: {e}")
+        except Exception as e:
+            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_save_settings_failed')}: {e}")
+    
+    def on_closing(self):
+        """关闭应用程序"""
+        self.logger.info("应用程序关闭")
+        self.root.destroy()
+    
+    def run(self):
+        """运行应用程序"""
+        self.log_message("MCU自动编译工具启动")
+        self.root.mainloop()
+
+
+def main():
+    """主函数"""
+    try:
+        app = MCUAutoBuildApp()
+        app.run()
+    except Exception as e:
+        print(f"应用程序启动失败: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

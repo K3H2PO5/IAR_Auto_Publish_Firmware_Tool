@@ -1,0 +1,15 @@
+{
+    "project_settings": {
+        "iar_installation_path": "C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3",
+        "project_path": "E:/YourProject",
+        "output_directory": "./output",
+        "fw_publish_directory": "./fw_publish",
+        "info_file": "main.c"
+    },
+    "binary_settings": {
+        "bin_start_address": 134217728
+    },
+    "ui_settings": {
+        "language": "zh_CN"
+    }
+}
