@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-main.c文件更新模块
-负责更新main.c文件中的版本号
+信息文件更新模块
+负责更新包含版本信息的信息文件（如main.c等）
 """
 
 import os
@@ -11,12 +11,12 @@ import logging
 from typing import Tuple, Optional
 
 
-class MainCUpdater:
-    """main.c文件更新器"""
+class InfoFileUpdater:
+    """信息文件更新器"""
     
     def __init__(self, config: dict):
         """
-        初始化main.c更新器
+        初始化信息文件更新器
         
         Args:
             config: 配置字典
@@ -27,22 +27,22 @@ class MainCUpdater:
         # 版本号模式（每一位固定一位十进制数）
         self.version_pattern = r'V(\d)\.(\d)\.(\d)\.(\d)'
     
-    def extract_version_from_main_c(self, main_c_path: str) -> Optional[str]:
+    def extract_version_from_info_file(self, info_file_path: str) -> Optional[str]:
         """
-        从main.c文件中提取固件版本
+        从信息文件中提取固件版本
         
         Args:
-            main_c_path: main.c文件路径
+            info_file_path: 信息文件路径
             
         Returns:
             str: 版本字符串，失败时返回None
         """
         try:
-            if not os.path.exists(main_c_path):
-                self.logger.error(f"main.c文件不存在: {main_c_path}")
+            if not os.path.exists(info_file_path):
+                self.logger.error(f"信息文件不存在: {info_file_path}")
                 return None
             
-            with open(main_c_path, 'r', encoding='utf-8') as f:
+            with open(info_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             # 查找 __Firmware_Version 定义
@@ -51,22 +51,22 @@ class MainCUpdater:
             
             if match:
                 version = match.group(1)
-                self.logger.info(f"从main.c提取到版本: {version}")
+                self.logger.info(f"从信息文件提取到版本: {version}")
                 return version
             else:
-                self.logger.warning("在main.c中未找到__Firmware_Version定义")
+                self.logger.warning("在信息文件中未找到__Firmware_Version定义")
                 return None
                 
         except Exception as e:
-            self.logger.error(f"从main.c提取版本失败: {e}")
+            self.logger.error(f"从信息文件提取版本失败: {e}")
             return None
     
-    def update_version_in_main_c(self, main_c_path: str, new_version: str) -> Tuple[bool, str]:
+    def update_version_in_info_file(self, info_file_path: str, new_version: str) -> Tuple[bool, str]:
         """
-        更新main.c文件中的版本号
+        更新信息文件中的版本号
         
         Args:
-            main_c_path: main.c文件路径
+            info_file_path: 信息文件路径
             new_version: 新版本号
             
         Returns:
@@ -74,31 +74,31 @@ class MainCUpdater:
         """
         try:
             # 输入验证
-            if not main_c_path:
-                return False, "main.c文件路径为空"
+            if not info_file_path:
+                return False, "信息文件路径为空"
             
             if not new_version:
                 return False, "新版本号为空"
             
-            if not isinstance(main_c_path, str):
-                return False, f"main.c文件路径类型错误: {type(main_c_path)}"
+            if not isinstance(info_file_path, str):
+                return False, f"信息文件路径类型错误: {type(info_file_path)}"
             
             if not isinstance(new_version, str):
                 return False, f"版本号类型错误: {type(new_version)}"
             
-            if not os.path.exists(main_c_path):
-                return False, f"main.c文件不存在: {main_c_path}"
+            if not os.path.exists(info_file_path):
+                return False, f"信息文件不存在: {info_file_path}"
             
             # 验证版本号格式
             if not re.match(self.version_pattern, new_version):
                 return False, f"版本号格式不正确: {new_version}，应为 Vx.x.x.x 格式"
             
             # 检查文件是否可写
-            if not os.access(main_c_path, os.W_OK):
-                return False, f"main.c文件不可写: {main_c_path}"
+            if not os.access(info_file_path, os.W_OK):
+                return False, f"信息文件不可写: {info_file_path}"
             
             # 读取文件内容
-            with open(main_c_path, 'r', encoding='utf-8') as f:
+            with open(info_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             # 查找并替换版本号
@@ -110,24 +110,15 @@ class MainCUpdater:
             if new_content == content:
                 return False, "未找到版本号定义或版本号未发生变化"
             
-            # 备份原文件
-            backup_path = main_c_path + '.backup'
-            try:
-                with open(backup_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
-                self.logger.info(f"已创建备份文件: {backup_path}")
-            except Exception as e:
-                self.logger.warning(f"创建备份文件失败: {e}")
-            
-            # 写入新内容
-            with open(main_c_path, 'w', encoding='utf-8') as f:
+            # 直接写入新内容（不创建备份文件）
+            with open(info_file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
             
-            self.logger.info(f"成功更新main.c中的版本号: {new_version}")
+            self.logger.info(f"成功更新信息文件中的版本号: {new_version}")
             return True, f"版本号已更新为: {new_version}"
             
         except Exception as e:
-            error_msg = f"更新main.c版本号失败: {e}"
+            error_msg = f"更新信息文件版本号失败: {e}"
             self.logger.error(error_msg)
             return False, error_msg
     
@@ -143,12 +134,12 @@ class MainCUpdater:
         """
         return bool(re.match(self.version_pattern, version))
     
-    def get_version_line_info(self, main_c_path: str) -> dict:
+    def get_version_line_info(self, info_file_path: str) -> dict:
         """
-        获取main.c中版本号行的信息
+        获取信息文件中版本号行的信息
         
         Args:
-            main_c_path: main.c文件路径
+            info_file_path: 信息文件路径
             
         Returns:
             dict: 版本号行信息
@@ -161,10 +152,10 @@ class MainCUpdater:
         }
         
         try:
-            if not os.path.exists(main_c_path):
+            if not os.path.exists(info_file_path):
                 return info
             
-            with open(main_c_path, 'r', encoding='utf-8') as f:
+            with open(info_file_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
             for i, line in enumerate(lines, 1):
@@ -185,16 +176,16 @@ class MainCUpdater:
         return info
 
 
-def test_main_c_updater():
-    """测试main.c更新器功能"""
+def test_info_file_updater():
+    """测试信息文件更新器功能"""
     # 测试配置
     test_config = {
         'version_pattern': r'V(\d)\.(\d)\.(\d)\.(\d)'
     }
     
-    updater = MainCUpdater(test_config)
+    updater = InfoFileUpdater(test_config)
     
-    print("main.c更新器测试")
+    print("信息文件更新器测试")
     
     # 测试版本号格式验证
     test_versions = ["V0.0.1.0", "V1.2.3.4", "V9.9.9.9", "V10.1.2.3", "V1.23.4.5"]
@@ -203,16 +194,16 @@ def test_main_c_updater():
         print(f"版本号 {version}: {'有效' if is_valid else '无效'}")
     
     # 测试版本号行信息提取
-    main_c_path = "../app/main.c"
-    if os.path.exists(main_c_path):
-        info = updater.get_version_line_info(main_c_path)
+    info_file_path = "../app/main.c"
+    if os.path.exists(info_file_path):
+        info = updater.get_version_line_info(info_file_path)
         print(f"版本号行信息: {info}")
         
         # 测试版本号提取
-        current_version = updater.extract_version_from_main_c(main_c_path)
+        current_version = updater.extract_version_from_info_file(info_file_path)
         print(f"当前版本: {current_version}")
     else:
-        print("main.c文件不存在，跳过文件测试")
+        print("信息文件不存在，跳过文件测试")
 
 
 if __name__ == "__main__":
@@ -222,4 +213,4 @@ if __name__ == "__main__":
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    test_main_c_updater()
+    test_info_file_updater()

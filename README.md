@@ -129,7 +129,7 @@ The tool automatically injects the following information into bin files:
 ├── file_manager.py         # 文件管理模块 / File management module
 ├── path_manager.py         # 路径管理模块 / Path management module
 ├── config_analyzer.py      # 配置分析模块 / Configuration analysis module
-├── main_c_updater.py       # main.c更新模块 / main.c update module
+├── info_file_updater.py    # 信息文件更新模块 / info file update module
 ├── tool_version_manager.py # 工具版本管理模块 / Tool version management module
 ├── config.json            # 默认配置文件 / Default configuration file
 ├── user_config.json       # 用户配置文件 / User configuration file

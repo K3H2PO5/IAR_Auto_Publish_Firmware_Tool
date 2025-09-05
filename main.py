@@ -5,7 +5,7 @@
 IAR固件发布工具 - 带GUI界面的Windows应用程序
 """
 
-__version__ = "1.0.0.3"
+__version__ = "1.0.1.6"
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
@@ -25,7 +25,7 @@ from iar_builder import IARBuilder
 from binary_modifier import BinaryModifier
 from file_manager import FileManager
 from version_manager import VersionManager
-from main_c_updater import MainCUpdater
+from info_file_updater import InfoFileUpdater
 from path_manager import PathManager
 from config_analyzer import ConfigAnalyzer
 from tool_version_manager import ToolVersionManager
@@ -104,6 +104,14 @@ LANGUAGES = {
             'msg_firmware_directory_not_exist': '固件发布目录不存在',
             'msg_config_file_analysis_failed': '配置文件分析失败',
             'msg_check_config_file_pragma': '请检查配置文件是否包含正确的#pragma location定义。',
+            'git_commit_dialog_title': '提交信息 & Release Notes',
+            'git_commit_dialog_message': '请输入本次提交的更新信息（将同时用于Git提交和Release Notes）：',
+            'git_commit_dialog_placeholder': '例如：修复了某个bug，添加了新功能等...\n\n注意：提交描述会自动添加"发布xxxx版本"前缀\n\n快捷键：Ctrl+Enter 确认，Escape 取消',
+            'git_commit_dialog_ok': '确定',
+            'git_commit_dialog_cancel': '取消',
+            'release_note_title': 'Release Notes',
+            'release_note_created': 'Release note文件已创建',
+            'release_note_updated': 'Release note文件已更新',
             'language_options': {
                 'zh_CN': '简体中文',
                 'zh_TW': '繁體中文',
@@ -183,6 +191,14 @@ LANGUAGES = {
             'msg_firmware_directory_not_exist': '固件發布目錄不存在',
             'msg_config_file_analysis_failed': '配置檔案分析失敗',
             'msg_check_config_file_pragma': '請檢查配置檔案是否包含正確的#pragma location定義。',
+            'git_commit_dialog_title': '提交資訊 & Release Notes',
+            'git_commit_dialog_message': '請輸入本次提交的更新資訊（將同時用於Git提交和Release Notes）：',
+            'git_commit_dialog_placeholder': '例如：修復了某個bug，添加了新功能等...\n\n注意：提交描述會自動添加"發布xxxx版本"前綴\n\n快捷鍵：Ctrl+Enter 確認，Escape 取消',
+            'git_commit_dialog_ok': '確定',
+            'git_commit_dialog_cancel': '取消',
+            'release_note_title': 'Release Notes',
+            'release_note_created': 'Release note檔案已建立',
+            'release_note_updated': 'Release note檔案已更新',
             'language_options': {
                 'zh_CN': '简体中文',
                 'zh_TW': '繁體中文',
@@ -262,6 +278,14 @@ LANGUAGES = {
             'msg_firmware_directory_not_exist': 'Firmware publish directory does not exist',
             'msg_config_file_analysis_failed': 'Config file analysis failed',
             'msg_check_config_file_pragma': 'Please check if the config file contains correct #pragma location definitions.',
+            'git_commit_dialog_title': 'Commit Message & Release Notes',
+            'git_commit_dialog_message': 'Please enter the update information for this commit (will be used for both Git commit and Release Notes):',
+            'git_commit_dialog_placeholder': 'e.g.: Fixed a bug, added new feature, etc...\n\nNote: "Release xxxx version" prefix will be added automatically\n\nShortcuts: Ctrl+Enter to confirm, Escape to cancel',
+            'git_commit_dialog_ok': 'OK',
+            'git_commit_dialog_cancel': 'Cancel',
+            'release_note_title': 'Release Notes',
+            'release_note_created': 'Release note file created',
+            'release_note_updated': 'Release note file updated',
             'language_options': {
                 'zh_CN': '简体中文',
                 'zh_TW': '繁體中文',
@@ -291,7 +315,7 @@ class MCUAutoBuildApp:
         self.binary_modifier = None
         self.file_manager = None
         self.version_manager = None
-        self.main_c_updater = None
+        self.info_file_updater = None
         self.path_manager = None
         self.config_analyzer = None
         self.tool_version_manager = ToolVersionManager()
@@ -870,13 +894,13 @@ class MCUAutoBuildApp:
                     current_branch = git_info.get('branch')
                 
                 self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
-                self.main_c_updater = MainCUpdater(self.config.get('version_settings', {}))
+                self.info_file_updater = InfoFileUpdater(self.config.get('version_settings', {}))
                 
                 # 从信息文件中读取当前版本
                 main_file_relative = self._find_info_file(self.project_path_var.get())
                 if main_file_relative:
                     main_file_path = os.path.join(self.project_path_var.get(), main_file_relative)
-                    current_version = self.main_c_updater.extract_version_from_main_c(main_file_path)
+                    current_version = self.info_file_updater.extract_version_from_info_file(main_file_path)
                 else:
                     current_version = None
                 
@@ -1124,11 +1148,11 @@ class MCUAutoBuildApp:
                     current_branch = git_info.get('branch')
                 
                 self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
-                self.main_c_updater = MainCUpdater(self.config.get('version_settings', {}))
+                self.info_file_updater = InfoFileUpdater(self.config.get('version_settings', {}))
                 main_file_relative = self._find_info_file(project_path)
                 if main_file_relative:
                     main_file_path = os.path.join(project_path, main_file_relative)
-                    current_version = self.main_c_updater.extract_version_from_main_c(main_file_path)
+                    current_version = self.info_file_updater.extract_version_from_info_file(main_file_path)
                 else:
                     current_version = None
                 
@@ -1146,16 +1170,32 @@ class MCUAutoBuildApp:
                 
                 # 3. 检查是否有未提交的更改并提交
                 has_changes = self.git_manager.has_uncommitted_changes()
+                commit_message = ""  # 用于存储最终的提交信息
+                
+                # 总是显示Git提交信息输入弹窗，让用户输入更新信息
+                self.update_status("输入更新信息...")
+                default_message = f"发布{next_version}版本"
+                commit_message = self.show_git_commit_dialog(default_message)
+                
+                if not commit_message:  # 用户取消输入
+                    self.log_message("用户取消了更新信息输入")
+                    result = messagebox.askyesno("确认", 
+                                               "未输入更新信息，是否继续编译？\n建议输入更新信息用于Release Notes。")
+                    if not result:
+                        return
+                    # 如果用户选择继续，使用默认信息
+                    commit_message = default_message
+                
+                # 如果有未提交的更改，进行Git提交
                 if has_changes:
                     self.update_status("提交更改...")
-                    commit_message = f"自动发布{next_version}版本"
                     self.log_message(f"准备提交: {commit_message}")
                     if self.git_manager.commit_changes(commit_message):
                         self.log_message(f"Git提交成功: {commit_message}")
                     else:
                         self.log_message("Git提交失败，但继续编译流程")
                 else:
-                    self.log_message("没有未提交的更改")
+                    self.log_message("没有未提交的更改，跳过Git提交")
                 
                 # 4. 如果版本号需要更新，更新信息文件
                 if current_version and next_version != current_version:
@@ -1163,20 +1203,28 @@ class MCUAutoBuildApp:
                     main_file_relative = self._find_info_file(project_path)
                     if main_file_relative:
                         main_file_path = os.path.join(project_path, main_file_relative)
-                        success, message = self.main_c_updater.update_version_in_main_c(main_file_path, next_version)
+                        success, message = self.info_file_updater.update_version_in_info_file(main_file_path, next_version)
                     else:
                         success, message = False, "未找到信息文件"
                     if success:
                         self.log_message(f"版本号更新成功: {message}")
                         
-                        # 再次提交版本号更改到Git
-                        self.update_status("提交版本号更改...")
-                        commit_message = f"更新版本号到{next_version}"
-                        self.log_message(f"准备提交: {commit_message}")
-                        if self.git_manager.commit_changes(commit_message):
-                            self.log_message(f"Git提交成功: {commit_message}")
-                        else:
-                            self.log_message("Git提交失败，但继续编译流程")
+                        # 创建或更新Release Note（在Git提交之前）
+                        self.update_status("更新Release Notes...")
+                        self.create_or_update_release_note(next_version, commit_message)
+                        
+                        # 如果有未提交的更改（包括版本号更新和Release Note），再次提交
+                        if self.git_manager.has_uncommitted_changes():
+                            self.update_status("提交版本号更改和Release Notes...")
+                            # 使用相同的提交信息，或者如果用户之前取消了，则使用默认信息
+                            if not commit_message:
+                                commit_message = f"发布{next_version}版本"
+                            
+                            self.log_message(f"准备提交: {commit_message}")
+                            if self.git_manager.commit_changes(commit_message):
+                                self.log_message(f"Git提交成功: {commit_message}")
+                            else:
+                                self.log_message("Git提交失败，但继续编译流程")
                     else:
                         self.log_message(f"版本号更新失败: {message}")
                         # 继续使用原版本号
@@ -1345,6 +1393,9 @@ class MCUAutoBuildApp:
         # 使设置窗口居中
         settings_window.transient(self.root)
         settings_window.grab_set()
+        
+        # 计算设置窗口位置（跟随主窗口中心）
+        self._center_settings_dialog(settings_window)
         
         # 创建主框架
         main_frame = ttk.Frame(settings_window, padding="10")
@@ -1575,6 +1626,330 @@ class MCUAutoBuildApp:
             messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_bin_address_format_error')}: {e}")
         except Exception as e:
             messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_save_settings_failed')}: {e}")
+    
+    def show_git_commit_dialog(self, default_message: str = "") -> str:
+        """
+        显示Git提交信息输入弹窗
+        
+        Args:
+            default_message: 默认提交信息
+            
+        Returns:
+            str: 用户输入的提交信息，如果取消则返回空字符串
+        """
+        # 创建弹窗
+        dialog = tk.Toplevel(self.root)
+        dialog.title(self.get_text('git_commit_dialog_title'))
+        dialog.geometry("500x300")
+        dialog.resizable(True, True)
+        
+        # 使弹窗居中并跟随主窗口
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # 计算对话框位置（跟随主窗口中心）
+        self._center_dialog(dialog)
+        
+        # 创建主框架
+        main_frame = ttk.Frame(dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 说明文本
+        message_label = ttk.Label(main_frame, text=self.get_text('git_commit_dialog_message'))
+        message_label.pack(anchor=tk.W, pady=(0, 10))
+        
+        # 文本输入框
+        text_frame = ttk.Frame(main_frame)
+        text_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 20))
+        
+        text_widget = scrolledtext.ScrolledText(text_frame, height=8, wrap=tk.WORD)
+        text_widget.pack(fill=tk.BOTH, expand=True)
+        
+        # 设置占位符文本（不显示默认信息）
+        text_widget.insert(tk.END, self.get_text('git_commit_dialog_placeholder'))
+        # 选中占位符文本，方便用户直接输入
+        text_widget.tag_add(tk.SEL, "1.0", tk.END)
+        text_widget.mark_set(tk.INSERT, "1.0")
+        
+        # 按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X)
+        
+        # 结果变量
+        result = {"message": ""}
+        
+        def on_ok():
+            """确定按钮回调"""
+            user_input = text_widget.get("1.0", tk.END).strip()
+            # 如果用户没有输入内容或只输入了占位符，使用默认消息
+            if not user_input or user_input == self.get_text('git_commit_dialog_placeholder'):
+                message = default_message
+            else:
+                # 在用户输入前添加"发布xxxx版本"前缀
+                message = f"{default_message} - {user_input}"
+            result["message"] = message
+            dialog.destroy()
+        
+        def on_cancel():
+            """取消按钮回调"""
+            result["message"] = ""
+            dialog.destroy()
+        
+        # 按钮
+        ttk.Button(button_frame, text=self.get_text('git_commit_dialog_ok'), 
+                  command=on_ok).pack(side=tk.RIGHT, padx=(5, 0))
+        ttk.Button(button_frame, text=self.get_text('git_commit_dialog_cancel'), 
+                  command=on_cancel).pack(side=tk.RIGHT)
+        
+        # 绑定快捷键
+        # Ctrl+Enter 确认
+        text_widget.bind('<Control-Return>', lambda e: on_ok())
+        # Escape 取消
+        dialog.bind('<Escape>', lambda e: on_cancel())
+        # 注意：不绑定单独的Return键，让它在文本框中作为换行使用
+        
+        # 设置焦点到文本输入框
+        text_widget.focus_set()
+        
+        # 等待弹窗关闭
+        dialog.wait_window()
+        
+        return result["message"]
+    
+    def _center_dialog(self, dialog):
+        """
+        将对话框居中显示，跟随主窗口位置
+        
+        Args:
+            dialog: 要居中的对话框
+        """
+        def center_dialog():
+            """延迟居中对话框，确保主窗口位置已更新"""
+            try:
+                # 强制更新主窗口和对话框
+                self.root.update_idletasks()
+                dialog.update_idletasks()
+                
+                # 获取主窗口位置和尺寸
+                main_x = self.root.winfo_x()
+                main_y = self.root.winfo_y()
+                main_width = self.root.winfo_width()
+                main_height = self.root.winfo_height()
+                
+                # 如果主窗口尺寸为0，使用默认值
+                if main_width <= 1:
+                    main_width = 800
+                if main_height <= 1:
+                    main_height = 600
+                
+                # 对话框尺寸
+                dialog_width, dialog_height = 500, 300
+                
+                # 计算居中位置
+                center_x = main_x + (main_width - dialog_width) // 2
+                center_y = main_y + (main_height - dialog_height) // 2
+                
+                # 确保对话框不会超出屏幕边界
+                screen_width = dialog.winfo_screenwidth()
+                screen_height = dialog.winfo_screenheight()
+                
+                # 对于多显示器环境，使用更宽松的边界检查
+                # 允许对话框出现在主窗口所在的显示器上
+                min_x = min(0, main_x - 100)  # 允许稍微超出左边界
+                max_x = max(screen_width, main_x + main_width + 100)  # 允许超出右边界
+                min_y = min(0, main_y - 100)  # 允许稍微超出上边界
+                max_y = max(screen_height, main_y + main_height + 100)  # 允许超出下边界
+                
+                # 限制在合理的屏幕范围内
+                center_x = max(min_x, min(center_x, max_x - dialog_width))
+                center_y = max(min_y, min(center_y, max_y - dialog_height))
+                
+                # 设置对话框位置
+                dialog.geometry(f"{dialog_width}x{dialog_height}+{center_x}+{center_y}")
+                
+            except Exception as e:
+                # 如果计算失败，使用默认居中
+                self.log_message(f"对话框居中计算失败: {e}")
+                dialog.geometry("500x300+100+100")
+        
+        # 立即执行一次，然后延迟执行确保位置正确
+        center_dialog()
+        dialog.after(100, center_dialog)
+    
+    def _center_settings_dialog(self, dialog):
+        """
+        将设置对话框居中显示，跟随主窗口位置
+        
+        Args:
+            dialog: 要居中的设置对话框
+        """
+        def center_dialog():
+            """延迟居中设置对话框，确保主窗口位置已更新"""
+            try:
+                # 强制更新主窗口和对话框
+                self.root.update_idletasks()
+                dialog.update_idletasks()
+                
+                # 获取主窗口位置和尺寸
+                main_x = self.root.winfo_x()
+                main_y = self.root.winfo_y()
+                main_width = self.root.winfo_width()
+                main_height = self.root.winfo_height()
+                
+                # 如果主窗口尺寸为0，使用默认值
+                if main_width <= 1:
+                    main_width = 800
+                if main_height <= 1:
+                    main_height = 600
+                
+                # 设置对话框尺寸
+                dialog_width, dialog_height = 600, 550
+                
+                # 计算居中位置
+                center_x = main_x + (main_width - dialog_width) // 2
+                center_y = main_y + (main_height - dialog_height) // 2
+                
+                # 确保对话框不会超出屏幕边界
+                screen_width = dialog.winfo_screenwidth()
+                screen_height = dialog.winfo_screenheight()
+                
+                # 对于多显示器环境，使用更宽松的边界检查
+                # 允许对话框出现在主窗口所在的显示器上
+                min_x = min(0, main_x - 100)  # 允许稍微超出左边界
+                max_x = max(screen_width, main_x + main_width + 100)  # 允许超出右边界
+                min_y = min(0, main_y - 100)  # 允许稍微超出上边界
+                max_y = max(screen_height, main_y + main_height + 100)  # 允许超出下边界
+                
+                # 限制在合理的屏幕范围内
+                center_x = max(min_x, min(center_x, max_x - dialog_width))
+                center_y = max(min_y, min(center_y, max_y - dialog_height))
+                
+                # 设置对话框位置
+                dialog.geometry(f"{dialog_width}x{dialog_height}+{center_x}+{center_y}")
+                
+            except Exception as e:
+                # 如果计算失败，使用默认居中
+                self.log_message(f"设置对话框居中计算失败: {e}")
+                dialog.geometry("600x550+100+100")
+        
+        # 立即执行一次，然后延迟执行确保位置正确
+        center_dialog()
+        dialog.after(100, center_dialog)
+    
+    def _format_changes_for_release_note(self, commit_message: str) -> str:
+        """
+        格式化用户输入的更新信息，以分号或句号为界换行
+        
+        Args:
+            commit_message: 原始提交信息
+            
+        Returns:
+            str: 格式化后的文本
+        """
+        try:
+            # 移除可能的前缀（如"发布V1.0.0.1版本 - "）
+            if " - " in commit_message:
+                # 提取用户实际输入的部分
+                user_input = commit_message.split(" - ", 1)[1]
+            else:
+                user_input = commit_message
+            
+            # 按分号和句号分割文本
+            import re
+            # 使用正则表达式分割，支持中英文标点符号
+            sentences = re.split(r'[;；。.]', user_input)
+            
+            # 过滤空字符串并去除首尾空格
+            sentences = [s.strip() for s in sentences if s.strip()]
+            
+            # 如果只有一个句子，直接返回
+            if len(sentences) <= 1:
+                return f"- {user_input}"
+            
+            # 多个句子，每个句子一行，添加项目符号
+            formatted_lines = []
+            for sentence in sentences:
+                if sentence:  # 确保句子不为空
+                    formatted_lines.append(f"- {sentence}")
+            
+            return "\n".join(formatted_lines)
+            
+        except Exception as e:
+            # 如果格式化失败，返回原始文本
+            self.log_message(f"格式化更新信息失败: {e}")
+            return f"- {commit_message}"
+    
+    def create_or_update_release_note(self, version: str, commit_message: str, 
+                                    timestamp: datetime = None) -> bool:
+        """
+        创建或更新release note文件
+        
+        Args:
+            version: 版本号
+            commit_message: 提交信息
+            timestamp: 时间戳，如果为None则使用当前时间
+            
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            if timestamp is None:
+                timestamp = datetime.now()
+            
+            # 获取项目根目录
+            if self.project_path_var.get():
+                project_root = os.path.abspath(self.project_path_var.get())
+            else:
+                project_root = os.getcwd()
+            
+            # release note文件路径（放在项目主目录）
+            release_note_path = os.path.join(project_root, "RELEASE_NOTES.md")
+            
+            # 检查文件是否存在
+            file_exists = os.path.exists(release_note_path)
+            
+            # 准备新的条目
+            new_entry = f"## {version} - {timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            
+            # 格式化用户输入的更新信息，以分号或句号为界换行
+            formatted_changes = self._format_changes_for_release_note(commit_message)
+            new_entry += f"**Changes:**\n{formatted_changes}\n\n"
+            
+            if file_exists:
+                # 读取现有内容
+                with open(release_note_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # 在文件开头插入新条目
+                if content.strip():
+                    content = new_entry + content
+                else:
+                    content = new_entry
+                
+                # 写入更新后的内容
+                with open(release_note_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                
+                self.log_message(self.get_text('release_note_updated'))
+            else:
+                # 创建新文件
+                header = f"# {self.get_text('release_note_title')}\n\n"
+                header += "本文档记录了固件版本的更新历史。\n\n"
+                header += "---\n\n"
+                
+                content = header + new_entry
+                
+                with open(release_note_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                
+                self.log_message(self.get_text('release_note_created'))
+            
+            self.log_message(f"Release note文件路径: {release_note_path}")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"创建/更新release note失败: {e}")
+            return False
     
     def on_closing(self):
         """关闭应用程序"""
