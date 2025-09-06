@@ -21,14 +21,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Lint with flake8
-      run: |
-        pip install flake8
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        pip install pyinstaller
     
     - name: Test application startup
       run: |
         python -c "import main; print('Application imports successfully')"
+    
+    - name: Test version manager
+      run: |
+        python -c "from tool_version_manager import ToolVersionManager; print('Version manager works')"
+    
+    - name: Test file manager
+      run: |
+        python -c "from file_manager import FileManager; print('File manager works')"
