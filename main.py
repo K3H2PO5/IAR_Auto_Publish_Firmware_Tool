@@ -5,7 +5,7 @@
 IAR固件发布工具 - 带GUI界面的Windows应用程序
 """
 
-__version__ = "1.0.1.6"
+__version__ = "1.0.2.6"
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
@@ -42,8 +42,7 @@ LANGUAGES = {
             'check_version': '检查版本',
             'start_build': '开始编译',
             'open_settings': '设置',
-            'open_output': '打开输出目录',
-            'open_firmware': '打开固件目录',
+            'open_firmware': '本地发布目录',
             'status_ready': '就绪',
             'status_checking': '检查中...',
             'status_building': '编译中...',
@@ -55,8 +54,9 @@ LANGUAGES = {
             'project_settings': '项目设置',
             'binary_settings': '二进制设置',
             'iar_installation_path': 'IAR安装目录:',
-            'output_directory': '输出目录:',
-            'fw_publish_directory': '固件发布目录:',
+            'fw_publish_directory': '本地发布目录:',
+            'remote_publish_directory': '远程发布目录:',
+            'enable_remote_publish': '启用远程发布',
             'bin_start_address': 'bin起始地址:',
             'config_file': '配置文件:',
             'language': '语言:',
@@ -66,7 +66,6 @@ LANGUAGES = {
             'cancel': '取消',
             'example_bin_address': '(例如: 0x8000000)',
             'browse': '浏览',
-            'cleanup_output': '清理输出',
             'log_output': '日志输出',
             'success': '成功',
             'error': '错误',
@@ -100,8 +99,10 @@ LANGUAGES = {
             'msg_compile_success_no_bin': '编译成功但未找到输出bin文件',
             'msg_compile_complete': '编译完成！',
             'msg_compile_exception': '编译流程异常',
-            'msg_output_directory_not_exist': '输出目录不存在',
             'msg_firmware_directory_not_exist': '固件发布目录不存在',
+            'msg_remote_publish_directory_not_exist': '远程发布目录不存在',
+            'msg_remote_publish_success': '远程发布成功',
+            'msg_remote_publish_failed': '远程发布失败',
             'msg_config_file_analysis_failed': '配置文件分析失败',
             'msg_check_config_file_pragma': '请检查配置文件是否包含正确的#pragma location定义。',
             'git_commit_dialog_title': '提交信息 & Release Notes',
@@ -129,8 +130,7 @@ LANGUAGES = {
             'check_version': '檢查版本',
             'start_build': '開始編譯',
             'open_settings': '設定',
-            'open_output': '開啟輸出目錄',
-            'open_firmware': '開啟固件目錄',
+            'open_firmware': '本地發布目錄',
             'status_ready': '就緒',
             'status_checking': '檢查中...',
             'status_building': '編譯中...',
@@ -142,8 +142,9 @@ LANGUAGES = {
             'project_settings': '專案設定',
             'binary_settings': '二進位設定',
             'iar_installation_path': 'IAR安裝目錄:',
-            'output_directory': '輸出目錄:',
-            'fw_publish_directory': '固件發布目錄:',
+            'fw_publish_directory': '本地發布目錄:',
+            'remote_publish_directory': '遠程發布目錄:',
+            'enable_remote_publish': '啟用遠程發布',
             'bin_start_address': 'bin起始位址:',
             'config_file': '配置檔案:',
             'language': '語言:',
@@ -153,7 +154,6 @@ LANGUAGES = {
             'cancel': '取消',
             'example_bin_address': '(例如: 0x8000000)',
             'browse': '瀏覽',
-            'cleanup_output': '清理輸出',
             'log_output': '日誌輸出',
             'success': '成功',
             'error': '錯誤',
@@ -187,8 +187,10 @@ LANGUAGES = {
             'msg_compile_success_no_bin': '編譯成功但未找到輸出bin檔案',
             'msg_compile_complete': '編譯完成！',
             'msg_compile_exception': '編譯流程異常',
-            'msg_output_directory_not_exist': '輸出目錄不存在',
             'msg_firmware_directory_not_exist': '固件發布目錄不存在',
+            'msg_remote_publish_directory_not_exist': '遠程發布目錄不存在',
+            'msg_remote_publish_success': '遠程發布成功',
+            'msg_remote_publish_failed': '遠程發布失敗',
             'msg_config_file_analysis_failed': '配置檔案分析失敗',
             'msg_check_config_file_pragma': '請檢查配置檔案是否包含正確的#pragma location定義。',
             'git_commit_dialog_title': '提交資訊 & Release Notes',
@@ -216,8 +218,7 @@ LANGUAGES = {
             'check_version': 'Check Version',
             'start_build': 'Start Build',
             'open_settings': 'Settings',
-            'open_output': 'Open Output Directory',
-            'open_firmware': 'Open Firmware Directory',
+            'open_firmware': 'Local Publish Directory',
             'status_ready': 'Ready',
             'status_checking': 'Checking...',
             'status_building': 'Building...',
@@ -229,8 +230,9 @@ LANGUAGES = {
             'project_settings': 'Project Settings',
             'binary_settings': 'Binary Settings',
             'iar_installation_path': 'IAR Installation Path:',
-            'output_directory': 'Output Directory:',
-            'fw_publish_directory': 'Firmware Publish Directory:',
+            'fw_publish_directory': 'Local Publish Directory:',
+            'remote_publish_directory': 'Remote Publish Directory:',
+            'enable_remote_publish': 'Enable Remote Publish',
             'bin_start_address': 'Bin Start Address:',
             'config_file': 'Config File:',
             'language': 'Language:',
@@ -240,7 +242,6 @@ LANGUAGES = {
             'cancel': 'Cancel',
             'example_bin_address': '(e.g.: 0x8000000)',
             'browse': 'Browse',
-            'cleanup_output': 'Clean Output',
             'log_output': 'Log Output',
             'success': 'Success',
             'error': 'Error',
@@ -274,8 +275,10 @@ LANGUAGES = {
             'msg_compile_success_no_bin': 'Compilation successful but no output bin file found',
             'msg_compile_complete': 'Compilation Complete!',
             'msg_compile_exception': 'Compilation Process Exception',
-            'msg_output_directory_not_exist': 'Output directory does not exist',
             'msg_firmware_directory_not_exist': 'Firmware publish directory does not exist',
+            'msg_remote_publish_directory_not_exist': 'Remote publish directory does not exist',
+            'msg_remote_publish_success': 'Remote publish successful',
+            'msg_remote_publish_failed': 'Remote publish failed',
             'msg_config_file_analysis_failed': 'Config file analysis failed',
             'msg_check_config_file_pragma': 'Please check if the config file contains correct #pragma location definitions.',
             'git_commit_dialog_title': 'Commit Message & Release Notes',
@@ -421,8 +424,8 @@ class MCUAutoBuildApp:
             # 初始化路径管理器和配置分析器 - 使用用户指定的项目路径
             project_path = self.config.get('project_settings', {}).get('project_path', '')
             if not project_path or not os.path.exists(project_path):
-                project_path = os.getcwd()  # 如果用户路径无效，使用当前工作目录
-                self.log_message(f"使用当前工作目录作为项目路径: {project_path}")
+                project_path = os.path.dirname(os.path.abspath(__file__))  # 使用脚本所在目录
+                self.log_message(f"使用脚本所在目录作为项目路径: {project_path}")
             else:
                 self.log_message(f"使用用户指定的项目路径: {project_path}")
             
@@ -473,8 +476,9 @@ class MCUAutoBuildApp:
                 "project_settings": {
                     "iar_installation_path": "",
                     "project_path": "",
-                    "output_directory": "./output",
                     "fw_publish_directory": "./fw_publish",
+                    "remote_publish_directory": "",
+                    "enable_remote_publish": False,
                     "info_file": ""
                 },
                 "binary_settings": {
@@ -602,8 +606,8 @@ class MCUAutoBuildApp:
         
         # 项目路径
         ttk.Label(info_frame, text=self.get_text('project_path')).grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
-        # 优先使用配置中的项目路径，如果没有则使用当前工作目录
-        initial_project_path = self.config.get('project_settings', {}).get('project_path', os.getcwd())
+        # 优先使用配置中的项目路径，如果没有则使用脚本所在目录
+        initial_project_path = self.config.get('project_settings', {}).get('project_path', os.path.dirname(os.path.abspath(__file__)))
         self.project_path_var = tk.StringVar(value=initial_project_path)
         ttk.Entry(info_frame, textvariable=self.project_path_var, state="readonly").grid(
             row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
@@ -636,8 +640,6 @@ class MCUAutoBuildApp:
         ttk.Button(button_frame, text=self.get_text('check_git'), command=self.check_git_status).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text=self.get_text('check_version'), command=self.check_version).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text=self.get_text('start_build'), command=self.start_build).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text=self.get_text('cleanup_output'), command=self.cleanup_output).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text=self.get_text('open_output'), command=self.open_output_directory).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text=self.get_text('open_firmware'), command=self.open_firmware_directory).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text=self.get_text('open_settings'), command=self.open_settings).pack(side=tk.LEFT)
         
@@ -694,7 +696,7 @@ class MCUAutoBuildApp:
         """浏览项目路径"""
         try:
             # 获取当前项目路径作为初始目录
-            initial_dir = self.project_path_var.get() or os.getcwd()
+            initial_dir = self.project_path_var.get() or os.path.dirname(os.path.abspath(__file__))
             self.log_message(f"文件对话框初始目录: {initial_dir}")
             
             directory = filedialog.askdirectory(
@@ -794,7 +796,6 @@ class MCUAutoBuildApp:
                 "project_settings": {
                     "iar_installation_path": self.config.get('project_settings', {}).get('iar_installation_path', ''),
                     "project_path": self.project_path_var.get(),
-                    "output_directory": self.config.get('project_settings', {}).get('output_directory', './output'),
                     "fw_publish_directory": self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'),
                     "info_file": self.config.get('project_settings', {}).get('info_file', '')
                 },
@@ -1105,12 +1106,6 @@ class MCUAutoBuildApp:
         """开始编译流程"""
         def build_thread():
             try:
-                # 自动递增工具版本
-                new_tool_version = self.tool_version_manager.auto_increment_version()
-                if new_tool_version:
-                    # 更新窗口标题
-                    self.root.title(f"IAR固件发布工具 v{new_tool_version}")
-                    self.log_message(f"工具版本已自动递增到: {new_tool_version}")
                 
                 # 检查配置是否完整
                 if not self._check_build_config():
@@ -1198,6 +1193,7 @@ class MCUAutoBuildApp:
                     self.log_message("没有未提交的更改，跳过Git提交")
                 
                 # 4. 如果版本号需要更新，更新信息文件
+                version_updated = False
                 if current_version and next_version != current_version:
                     self.update_status("更新版本号...")
                     main_file_relative = self._find_info_file(project_path)
@@ -1208,29 +1204,30 @@ class MCUAutoBuildApp:
                         success, message = False, "未找到信息文件"
                     if success:
                         self.log_message(f"版本号更新成功: {message}")
-                        
-                        # 创建或更新Release Note（在Git提交之前）
-                        self.update_status("更新Release Notes...")
-                        self.create_or_update_release_note(next_version, commit_message)
-                        
-                        # 如果有未提交的更改（包括版本号更新和Release Note），再次提交
-                        if self.git_manager.has_uncommitted_changes():
-                            self.update_status("提交版本号更改和Release Notes...")
-                            # 使用相同的提交信息，或者如果用户之前取消了，则使用默认信息
-                            if not commit_message:
-                                commit_message = f"发布{next_version}版本"
-                            
-                            self.log_message(f"准备提交: {commit_message}")
-                            if self.git_manager.commit_changes(commit_message):
-                                self.log_message(f"Git提交成功: {commit_message}")
-                            else:
-                                self.log_message("Git提交失败，但继续编译流程")
+                        version_updated = True
                     else:
                         self.log_message(f"版本号更新失败: {message}")
                         # 继续使用原版本号
                         next_version = current_version
                 
-                # 4. 检查是否还有其他未提交的更改
+                # 5. 创建或更新Release Note（无论版本号是否更新都执行）
+                self.update_status("更新Release Notes...")
+                self.create_or_update_release_note(next_version, commit_message)
+                
+                # 6. 如果有未提交的更改（包括版本号更新和Release Note），再次提交
+                if self.git_manager.has_uncommitted_changes():
+                    self.update_status("提交版本号更改和Release Notes...")
+                    # 使用相同的提交信息，或者如果用户之前取消了，则使用默认信息
+                    if not commit_message:
+                        commit_message = f"发布{next_version}版本"
+                    
+                    self.log_message(f"准备提交: {commit_message}")
+                    if self.git_manager.commit_changes(commit_message):
+                        self.log_message(f"Git提交成功: {commit_message}")
+                    else:
+                        self.log_message("Git提交失败，但继续编译流程")
+                
+                # 7. 检查是否还有其他未提交的更改
                 has_changes = self.git_manager.has_uncommitted_changes()
                 if has_changes:
                     result = messagebox.askyesno("确认", 
@@ -1238,7 +1235,7 @@ class MCUAutoBuildApp:
                     if not result:
                         return
                 
-                # 5. 获取commit ID（使用7位短ID，与SourceTree一致）
+                # 8. 获取commit ID（使用7位短ID，与SourceTree一致）
                 commit_id = self.git_manager.get_short_commit_id(7)
                 if not commit_id:
                     messagebox.showerror(self.get_text('msg_error'), self.get_text('msg_cannot_get_commit_id'))
@@ -1246,10 +1243,10 @@ class MCUAutoBuildApp:
                 
                 self.log_message(f"使用commit ID: {commit_id}")
                 
-                # 6. 初始化IAR编译器
+                # 9. 初始化IAR编译器
                 self.iar_builder = IARBuilder(self.config['project_settings'])
                 
-                # 7. 智能编译项目
+                # 10. 智能编译项目
                 self.update_status("编译项目中...")
                 # 记录编译开始时间
                 compile_start_time = datetime.now()
@@ -1273,7 +1270,7 @@ class MCUAutoBuildApp:
                 
                 self.log_message("编译成功")
                 
-                # 8. 修改二进制文件
+                # 11. 修改二进制文件
                 self.update_status("修改二进制文件...")
                 self.binary_modifier = BinaryModifier(self.config['binary_settings'])
                 
@@ -1298,7 +1295,7 @@ class MCUAutoBuildApp:
                 self.log_message("二进制文件修改成功")
                 self.log_message(f"修改详情: {message}")
                 
-                # 9. 处理文件
+                # 12. 处理文件
                 self.update_status("处理输出文件...")
                 self.file_manager = FileManager(self.config['project_settings'], project_path)
                 
@@ -1311,7 +1308,7 @@ class MCUAutoBuildApp:
                 
                 self.log_message("文件处理成功")
                 
-                # 10. 发布固件到fw_publish目录
+                # 13. 发布固件到fw_publish目录
                 self.update_status("发布固件...")
                 try:
                     success, message, publish_info = self.file_manager.publish_firmware(
@@ -1324,13 +1321,57 @@ class MCUAutoBuildApp:
                     
                     self.log_message("固件发布成功")
                     self.log_message(f"发布详情: {message}")
+                    
+                    # 14. 发布到远程目录（如果启用了）
+                    enable_remote_publish = self.config['project_settings'].get('enable_remote_publish', False)
+                    remote_publish_dir = self.config['project_settings'].get('remote_publish_directory', '').strip()
+                    self.log_message(f"检查远程发布配置: 启用={enable_remote_publish}, 目录='{remote_publish_dir}'")
+                    
+                    if enable_remote_publish and remote_publish_dir:
+                        self.update_status("发布到远程目录...")
+                        try:
+                            # 获取当前分支名称
+                            git_info = self.git_manager.get_commit_info()
+                            branch_name = git_info.get('branch') or "main"
+                            
+                            # 使用重命名后的bin文件路径
+                            renamed_bin_path = publish_info.get('destination_path')
+                            if not renamed_bin_path or not os.path.exists(renamed_bin_path):
+                                self.log_message("重命名后的bin文件不存在，使用原始文件")
+                                renamed_bin_path = bin_info['path']
+                            
+                            # 获取Release Notes文件路径（在项目根目录）
+                            project_root = self.project_path_var.get()
+                            if not project_root:
+                                # 如果没有设置项目路径，使用当前脚本所在目录
+                                project_root = os.path.dirname(os.path.abspath(__file__))
+                            else:
+                                project_root = os.path.abspath(project_root)
+                            release_note_path = os.path.join(project_root, "RELEASE_NOTES.md")
+                            
+                            self.log_message(f"远程发布文件: bin={renamed_bin_path}, release_note={release_note_path}")
+                            
+                            # 发布到远程目录
+                            remote_success, remote_message, remote_info = self.file_manager.publish_to_remote(
+                                renamed_bin_path, release_note_path, branch_name)
+                            
+                            if remote_success:
+                                self.log_message("远程发布成功")
+                                self.log_message(f"远程发布详情: {remote_message}")
+                            else:
+                                self.log_message(f"远程发布失败: {remote_message}")
+                                # 远程发布失败不影响主流程，只记录日志
+                        except Exception as e:
+                            self.log_message(f"远程发布异常: {e}")
+                            # 远程发布异常不影响主流程，只记录日志
+                    
                 except Exception as e:
                     error_msg = f"发布固件时发生异常: {e}"
                     self.log_message(error_msg)
                     messagebox.showerror(self.get_text('msg_firmware_publish_error'), error_msg)
                     return
                 
-                # 11. 完成
+                # 15. 完成
                 self.update_status("编译流程完成")
                 # 计算编译时间
                 compile_end_time = datetime.now()
@@ -1348,29 +1389,6 @@ class MCUAutoBuildApp:
         
         threading.Thread(target=build_thread, daemon=True).start()
     
-    def cleanup_output(self):
-        """清理输出目录"""
-        try:
-            if not self.file_manager:
-                self.file_manager = FileManager(self.config['project_settings'])
-            
-            deleted_count = self.file_manager.cleanup_old_files(keep_count=5)
-            self.log_message(f"清理完成，删除了 {deleted_count} 个旧文件")
-            messagebox.showinfo(self.get_text('msg_cleanup_complete'), f"删除了 {deleted_count} 个旧文件")
-        except Exception as e:
-            self.log_message(f"清理失败: {e}")
-            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_cleanup_failed')}: {e}")
-    
-    def open_output_directory(self):
-        """打开输出目录"""
-        try:
-            output_dir = self.config['project_settings']['output_directory']
-            if os.path.exists(output_dir):
-                os.startfile(output_dir)
-            else:
-                messagebox.showwarning(self.get_text('msg_warning'), self.get_text('msg_output_directory_not_exist'))
-        except Exception as e:
-            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_open_directory_failed')}: {e}")
     
     def open_firmware_directory(self):
         """打开固件发布目录"""
@@ -1423,15 +1441,27 @@ class MCUAutoBuildApp:
         ttk.Entry(project_group, textvariable=self.settings_iar_path_var, state="readonly", width=35).grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
         ttk.Button(project_group, text=self.get_text('select_directory'), command=self.browse_iar_path_settings).grid(row=0, column=2, sticky=tk.W, padx=(10, 0), pady=5)
         
-        # 输出目录
-        ttk.Label(project_group, text=self.get_text('output_directory')).grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.settings_output_dir_var = tk.StringVar(value=self.config.get('project_settings', {}).get('output_directory', './output'))
-        ttk.Entry(project_group, textvariable=self.settings_output_dir_var, width=35).grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=5)
         
         # 固件发布目录
         ttk.Label(project_group, text=self.get_text('fw_publish_directory')).grid(row=2, column=0, sticky=tk.W, pady=5)
         self.settings_fw_publish_dir_var = tk.StringVar(value=self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'))
         ttk.Entry(project_group, textvariable=self.settings_fw_publish_dir_var, width=35).grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Button(project_group, text=self.get_text('select_directory'), command=self.browse_fw_publish_dir_settings).grid(row=2, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # 远程发布开关
+        self.settings_enable_remote_publish_var = tk.BooleanVar(value=self.config.get('project_settings', {}).get('enable_remote_publish', False))
+        ttk.Checkbutton(project_group, text=self.get_text('enable_remote_publish'), variable=self.settings_enable_remote_publish_var, command=self.on_remote_publish_toggle).grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=5)
+        
+        # 远程发布目录
+        ttk.Label(project_group, text=self.get_text('remote_publish_directory')).grid(row=4, column=0, sticky=tk.W, pady=5)
+        self.settings_remote_publish_dir_var = tk.StringVar(value=self.config.get('project_settings', {}).get('remote_publish_directory', ''))
+        self.settings_remote_publish_dir_entry = ttk.Entry(project_group, textvariable=self.settings_remote_publish_dir_var, width=35)
+        self.settings_remote_publish_dir_entry.grid(row=4, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        self.settings_remote_publish_dir_button = ttk.Button(project_group, text=self.get_text('select_directory'), command=self.browse_remote_publish_dir_settings)
+        self.settings_remote_publish_dir_button.grid(row=4, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        
+        # 初始化远程发布目录控件的状态
+        self.update_remote_publish_controls_state()
         
         # 二进制设置部分
         binary_group = ttk.LabelFrame(main_frame, text=self.get_text('binary_settings'), padding="10")
@@ -1496,7 +1526,7 @@ class MCUAutoBuildApp:
             else:
                 # 尝试从项目路径开始查找
                 project_path = self.config.get('project_settings', {}).get('project_path', '')
-                initial_dir = project_path if project_path and os.path.exists(project_path) else os.getcwd()
+                initial_dir = project_path if project_path and os.path.exists(project_path) else os.path.dirname(os.path.abspath(__file__))
             
             self.log_message(f"配置文件对话框初始目录: {initial_dir}")
             
@@ -1558,6 +1588,30 @@ class MCUAutoBuildApp:
             self.log_message(f"选择IAR目录时出错: {e}")
             messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_select_iar_directory_error')}: {e}")
     
+    def browse_fw_publish_dir_settings(self):
+        """浏览固件发布目录设置"""
+        directory = filedialog.askdirectory(title=self.get_text('select_directory'))
+        if directory:
+            self.settings_fw_publish_dir_var.set(directory)
+    
+    def browse_remote_publish_dir_settings(self):
+        """浏览远程发布目录设置"""
+        directory = filedialog.askdirectory(title=self.get_text('select_directory'))
+        if directory:
+            self.settings_remote_publish_dir_var.set(directory)
+    
+    def on_remote_publish_toggle(self):
+        """远程发布开关切换事件"""
+        self.update_remote_publish_controls_state()
+    
+    def update_remote_publish_controls_state(self):
+        """更新远程发布目录控件的启用状态"""
+        enabled = self.settings_enable_remote_publish_var.get()
+        state = 'normal' if enabled else 'disabled'
+        
+        self.settings_remote_publish_dir_entry.config(state=state)
+        self.settings_remote_publish_dir_button.config(state=state)
+    
     def save_settings(self, settings_window):
         """保存设置"""
         try:
@@ -1577,8 +1631,9 @@ class MCUAutoBuildApp:
             # 更新配置
             self.config['binary_settings']['bin_start_address'] = bin_start_address
             self.config['project_settings']['iar_installation_path'] = self.settings_iar_path_var.get()
-            self.config['project_settings']['output_directory'] = self.settings_output_dir_var.get()
             self.config['project_settings']['fw_publish_directory'] = self.settings_fw_publish_dir_var.get()
+            self.config['project_settings']['remote_publish_directory'] = self.settings_remote_publish_dir_var.get()
+            self.config['project_settings']['enable_remote_publish'] = self.settings_enable_remote_publish_var.get()
             
             # 保存语言设置到user_config.json
             if hasattr(self, 'settings_language_var'):
@@ -1595,8 +1650,9 @@ class MCUAutoBuildApp:
                 "project_settings": {
                     "iar_installation_path": self.config.get('project_settings', {}).get('iar_installation_path', ''),
                     "project_path": self.config.get('project_settings', {}).get('project_path', ''),
-                    "output_directory": self.config.get('project_settings', {}).get('output_directory', './output'),
                     "fw_publish_directory": self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'),
+                    "remote_publish_directory": self.config.get('project_settings', {}).get('remote_publish_directory', ''),
+                    "enable_remote_publish": self.config.get('project_settings', {}).get('enable_remote_publish', False),
                     "info_file": self.config.get('project_settings', {}).get('info_file', '')
                 },
                 "binary_settings": {
@@ -1897,10 +1953,12 @@ class MCUAutoBuildApp:
                 timestamp = datetime.now()
             
             # 获取项目根目录
-            if self.project_path_var.get():
-                project_root = os.path.abspath(self.project_path_var.get())
+            project_root = self.project_path_var.get()
+            if not project_root:
+                # 如果没有设置项目路径，使用当前脚本所在目录
+                project_root = os.path.dirname(os.path.abspath(__file__))
             else:
-                project_root = os.getcwd()
+                project_root = os.path.abspath(project_root)
             
             # release note文件路径（放在项目主目录）
             release_note_path = os.path.join(project_root, "RELEASE_NOTES.md")

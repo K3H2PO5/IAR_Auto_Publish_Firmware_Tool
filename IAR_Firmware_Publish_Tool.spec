@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='IAR_Firmware_Publish_Tool_v1.0.1.6',
+    name='IAR_Firmware_Publish_Tool_v1.0.2.6',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -341,6 +341,11 @@ class VersionManager:
             
             # 获取fw_publish目录中的最新版本
             latest_published = self.get_latest_version_from_files()
+            self.logger.info(f"当前代码版本: {self.format_version(*current_version)}")
+            if latest_published:
+                self.logger.info(f"已发布的最新版本: {self.format_version(*latest_published)}")
+            else:
+                self.logger.info("没有找到已发布的版本")
             
             # 确定应该使用哪个版本作为基准
             if latest_published is not None:

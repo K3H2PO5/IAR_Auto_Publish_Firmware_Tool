@@ -2,8 +2,9 @@
     "project_settings": {
         "iar_installation_path": "C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3",
         "project_path": "E:/YourProject",
-        "output_directory": "./output",
         "fw_publish_directory": "./fw_publish",
+        "remote_publish_directory": "",
+        "enable_remote_publish": false,
         "info_file": "main.c"
     },
     "binary_settings": {

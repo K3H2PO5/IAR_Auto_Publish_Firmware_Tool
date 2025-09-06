@@ -128,6 +128,7 @@ class GitManager:
             return full_commit_id[:length]
         return None
     
+    
     def get_commit_info(self) -> dict:
         """
         获取详细的commit信息

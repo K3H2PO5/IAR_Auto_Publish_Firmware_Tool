@@ -33,8 +33,8 @@ class FileManager:
         self.project_path = project_path
         
         # 从配置中获取设置
-        self.output_directory = config.get('output_directory', './output')
         self.fw_publish_directory = config.get('fw_publish_directory', './fw_publish')
+        self.remote_publish_directory = config.get('remote_publish_directory', '')
         
         # 使用项目路径的文件夹名称作为项目名称
         if project_path:
@@ -66,17 +66,8 @@ class FileManager:
             self.fw_publish_directory = os.path.abspath(self.fw_publish_directory)
             self.logger.info(f"解析后的fw_publish路径: {self.fw_publish_directory}")
         
-        # 确保输出目录存在
-        self._ensure_output_directory()
         self._ensure_fw_publish_directory()
     
-    def _ensure_output_directory(self):
-        """确保输出目录存在"""
-        try:
-            os.makedirs(self.output_directory, exist_ok=True)
-            self.logger.info(f"输出目录已准备: {self.output_directory}")
-        except Exception as e:
-            self.logger.error(f"创建输出目录失败: {e}")
     
     def _ensure_fw_publish_directory(self):
         """确保fw_publish目录存在"""
@@ -313,25 +304,17 @@ class FileManager:
             new_filename = self.generate_filename(commit_id, timestamp, version, self.project_path)
             result_info['new_filename'] = new_filename
             
-            # 生成目标路径
-            destination_path = os.path.join(self.output_directory, new_filename)
-            result_info['destination_path'] = destination_path
+            # 直接返回成功，不复制到输出目录
+            result_info['operation'] = 'processed'
+            success_msg = f"文件处理成功\n"
+            success_msg += f"源文件: {source_bin_path}\n"
+            success_msg += f"文件大小: {result_info['file_size']} 字节\n"
+            success_msg += f"Commit ID: {commit_id}\n"
+            if version:
+                success_msg += f"版本号: {version}\n"
+            success_msg += f"时间戳: {result_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}"
             
-            # 复制文件到输出目录
-            if self.copy_file(source_bin_path, destination_path):
-                result_info['operation'] = 'copy'
-                success_msg = f"文件处理成功\n"
-                success_msg += f"源文件: {source_bin_path}\n"
-                success_msg += f"目标文件: {destination_path}\n"
-                success_msg += f"文件大小: {result_info['file_size']} 字节\n"
-                success_msg += f"Commit ID: {commit_id}\n"
-                if version:
-                    success_msg += f"版本号: {version}\n"
-                success_msg += f"时间戳: {result_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}"
-                
-                return True, success_msg, result_info
-            else:
-                return False, "文件复制失败", result_info
+            return True, success_msg, result_info
                 
         except Exception as e:
             error_msg = f"处理bin文件失败: {e}"
@@ -398,38 +381,6 @@ class FileManager:
             self.logger.error(error_msg)
             return False, error_msg, result_info
     
-    def list_output_files(self) -> List[dict]:
-        """
-        列出输出目录中的所有文件
-        
-        Returns:
-            List[dict]: 文件信息列表
-        """
-        files = []
-        
-        try:
-            if not os.path.exists(self.output_directory):
-                return files
-            
-            for filename in os.listdir(self.output_directory):
-                file_path = os.path.join(self.output_directory, filename)
-                if os.path.isfile(file_path):
-                    stat = os.stat(file_path)
-                    files.append({
-                        'name': filename,
-                        'path': file_path,
-                        'size': stat.st_size,
-                        'modified_time': datetime.fromtimestamp(stat.st_mtime),
-                        'created_time': datetime.fromtimestamp(stat.st_ctime)
-                    })
-            
-            # 按修改时间排序（最新的在前）
-            files.sort(key=lambda x: x['modified_time'], reverse=True)
-            
-        except Exception as e:
-            self.logger.error(f"列出输出文件失败: {e}")
-        
-        return files
     
     def list_published_firmware(self) -> List[dict]:
         """
@@ -464,68 +415,101 @@ class FileManager:
         
         return files
     
-    def cleanup_old_files(self, keep_count: int = 10) -> int:
+    def publish_to_remote(self, bin_file_path: str, release_note_path: str, branch_name: str = "main") -> Tuple[bool, str, dict]:
         """
-        清理旧文件，只保留最新的几个文件
+        发布到远程目录
         
         Args:
-            keep_count: 保留的文件数量
+            bin_file_path: bin文件路径
+            release_note_path: release note文件路径
+            branch_name: 分支名称
             
         Returns:
-            int: 删除的文件数量
+            Tuple[bool, str, dict]: (成功标志, 消息, 结果信息)
         """
-        deleted_count = 0
-        
-        try:
-            files = self.list_output_files()
-            
-            if len(files) <= keep_count:
-                self.logger.info(f"文件数量({len(files)})不超过保留数量({keep_count})，无需清理")
-                return 0
-            
-            # 删除多余的文件
-            files_to_delete = files[keep_count:]
-            for file_info in files_to_delete:
-                try:
-                    os.remove(file_info['path'])
-                    deleted_count += 1
-                    self.logger.info(f"删除旧文件: {file_info['name']}")
-                except Exception as e:
-                    self.logger.error(f"删除文件失败 {file_info['name']}: {e}")
-            
-            self.logger.info(f"清理完成，删除了 {deleted_count} 个旧文件")
-            
-        except Exception as e:
-            self.logger.error(f"清理旧文件失败: {e}")
-        
-        return deleted_count
-    
-    def get_directory_info(self) -> dict:
-        """
-        获取输出目录信息
-        
-        Returns:
-            dict: 目录信息
-        """
-        info = {
-            'path': self.output_directory,
-            'exists': False,
-            'file_count': 0,
-            'total_size': 0,
+        result_info = {
+            'remote_directory': '',
+            'bin_file_copied': False,
+            'release_note_copied': False,
             'files': []
         }
         
         try:
-            if os.path.exists(self.output_directory):
-                info['exists'] = True
-                files = self.list_output_files()
-                info['files'] = files
-                info['file_count'] = len(files)
-                info['total_size'] = sum(f['size'] for f in files)
+            # 标准化路径
+            self.remote_publish_directory = os.path.normpath(self.remote_publish_directory)
+            self.logger.info(f"远程发布目录配置: '{self.remote_publish_directory}'")
+            
+            if not self.remote_publish_directory:
+                return False, "远程发布目录未配置", result_info
+            
+            if not os.path.exists(self.remote_publish_directory):
+                return False, f"远程发布目录不存在: {self.remote_publish_directory}", result_info
+            
+            # 创建项目名称+分支名称的子目录
+            sub_directory = f"{self.project_name}_{branch_name}"
+            remote_sub_dir = os.path.join(self.remote_publish_directory, sub_directory)
+            
+            self.logger.info(f"项目名称: {self.project_name}")
+            self.logger.info(f"分支名称: {branch_name}")
+            self.logger.info(f"子目录名称: {sub_directory}")
+            self.logger.info(f"远程子目录路径: {remote_sub_dir}")
+            
+            # 确保子目录存在
+            os.makedirs(remote_sub_dir, exist_ok=True)
+            result_info['remote_directory'] = remote_sub_dir
+            
+            self.logger.info(f"远程子目录创建成功: {remote_sub_dir}")
+            
+            # 复制bin文件
+            if os.path.exists(bin_file_path):
+                bin_filename = os.path.basename(bin_file_path)
+                remote_bin_path = os.path.join(remote_sub_dir, bin_filename)
+                
+                if self.copy_file(bin_file_path, remote_bin_path):
+                    result_info['bin_file_copied'] = True
+                    result_info['files'].append({
+                        'type': 'bin',
+                        'local_path': bin_file_path,
+                        'remote_path': remote_bin_path,
+                        'filename': bin_filename
+                    })
+                    self.logger.info(f"bin文件已复制到远程目录: {remote_bin_path}")
+                else:
+                    return False, f"复制bin文件失败: {bin_file_path}", result_info
+            else:
+                return False, f"bin文件不存在: {bin_file_path}", result_info
+            
+            # 复制release note文件
+            if os.path.exists(release_note_path):
+                release_note_filename = os.path.basename(release_note_path)
+                remote_release_note_path = os.path.join(remote_sub_dir, release_note_filename)
+                
+                if self.copy_file(release_note_path, remote_release_note_path):
+                    result_info['release_note_copied'] = True
+                    result_info['files'].append({
+                        'type': 'release_note',
+                        'local_path': release_note_path,
+                        'remote_path': remote_release_note_path,
+                        'filename': release_note_filename
+                    })
+                    self.logger.info(f"Release Notes已复制到远程目录: {remote_release_note_path}")
+                else:
+                    self.logger.warning(f"复制Release Notes失败: {release_note_path}")
+            else:
+                self.logger.warning(f"Release Notes文件不存在: {release_note_path}")
+            
+            success_msg = f"远程发布成功\n"
+            success_msg += f"远程目录: {remote_sub_dir}\n"
+            success_msg += f"bin文件: {'已复制' if result_info['bin_file_copied'] else '复制失败'}\n"
+            success_msg += f"Release Notes: {'已复制' if result_info['release_note_copied'] else '复制失败'}\n"
+            success_msg += f"文件数量: {len(result_info['files'])}"
+            
+            return True, success_msg, result_info
+            
         except Exception as e:
-            self.logger.error(f"获取目录信息失败: {e}")
-        
-        return info
+            error_msg = f"远程发布失败: {e}"
+            self.logger.error(error_msg)
+            return False, error_msg, result_info
     
     def backup_file(self, file_path: str, backup_suffix: str = ".backup") -> Tuple[bool, str]:
         """
@@ -557,14 +541,12 @@ def test_file_manager():
     """测试文件管理器功能"""
     # 测试配置
     test_config = {
-        'output_directory': './test_output',
         'project_name': 'TEST_MCU'
     }
     
     manager = FileManager(test_config)
     
     print("文件管理器测试")
-    print(f"输出目录: {manager.output_directory}")
     print(f"项目名称: {manager.project_name}")
     
     # 测试文件名生成

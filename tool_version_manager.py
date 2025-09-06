@@ -40,6 +40,8 @@ class ToolVersionManager:
             # 如果是开发环境，使用脚本所在目录
             base_path = os.path.dirname(__file__)
         
+        # 设置版本文件路径
+        self.version_file_path = os.path.join(base_path, 'tool_version.txt')
         
         # 版本号模式
         self.version_pattern = r'__version__\s*=\s*["\']([^"\']+)["\']'
@@ -61,7 +63,23 @@ class ToolVersionManager:
             self.logger.info(f"main.py路径: {self.tool_file_path}")
             self.logger.info(f"main.py存在: {os.path.exists(self.tool_file_path)}")
             
-            # 直接从main.py读取版本号（适用于开发环境和打包后环境）
+            # 如果是exe环境，尝试从版本文件读取
+            if hasattr(sys, 'frozen') and sys.frozen:
+                self.logger.info("检测到exe环境，尝试从版本文件读取版本号")
+                if os.path.exists(self.version_file_path):
+                    with open(self.version_file_path, 'r', encoding='utf-8') as f:
+                        version = f.read().strip()
+                    if version:
+                        self.logger.info(f"从版本文件读取工具版本: {version}")
+                        return version
+                else:
+                    self.logger.warning("版本文件不存在，使用硬编码版本号")
+                    # 在exe环境中使用硬编码的版本号
+                    hardcoded_version = "1.0.2.6"  # 这个版本号需要在打包时更新
+                    self.logger.info(f"使用硬编码版本号: {hardcoded_version}")
+                    return hardcoded_version
+            
+            # 开发环境：直接从main.py读取版本号
             if os.path.exists(self.tool_file_path):
                 with open(self.tool_file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
@@ -92,6 +110,7 @@ class ToolVersionManager:
     def parse_version(self, version_str: str) -> Optional[Tuple[int, int, int, int]]:
         """
         解析版本字符串
+        注意：每个版本号部分都限制在0-9之间
         
         Args:
             version_str: 版本字符串，如 "1.0.0.0"
@@ -115,6 +134,12 @@ class ToolVersionManager:
             minor = int(match.group(2))
             patch = int(match.group(3))
             build = int(match.group(4))
+            
+            # 确保版本号各部分都在0-9范围内
+            major = min(major, 9)
+            minor = min(minor, 9)
+            patch = min(patch, 9)
+            build = min(build, 9)
             
             self.logger.info(f"解析工具版本号: {version_str} -> ({major}, {minor}, {patch}, {build})")
             return (major, minor, patch, build)
@@ -141,6 +166,7 @@ class ToolVersionManager:
     def increment_version(self, version_tuple: Tuple[int, int, int, int]) -> Tuple[int, int, int, int]:
         """
         递增版本号（末位加一，溢出则进位）
+        注意：每个版本号部分都限制在0-9之间
         
         Args:
             version_tuple: 当前版本号元组
@@ -149,6 +175,12 @@ class ToolVersionManager:
             Tuple[int, int, int, int]: 递增后的版本号元组
         """
         major, minor, patch, build = version_tuple
+        
+        # 确保版本号各部分都在0-9范围内
+        major = min(major, 9)
+        minor = min(minor, 9)
+        patch = min(patch, 9)
+        build = min(build, 9)
         
         # 从末位开始递增
         build += 1
@@ -165,6 +197,10 @@ class ToolVersionManager:
                 if minor > 9:
                     minor = 0
                     major += 1
+                    
+                    if major > 9:
+                        # 如果主版本号也超过9，重置为1
+                        major = 1
         
         new_version = (major, minor, patch, build)
         self.logger.info(f"工具版本号递增: {self.format_version(*version_tuple)} -> {self.format_version(*new_version)}")

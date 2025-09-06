@@ -24,7 +24,7 @@
         "theme": "default"
     },
     "version_settings": {
-        "version_pattern": "V(\\d)\\.(\\d)\\.(\\d)\\.(\\d)",
+        "version_pattern": "V(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)",
         "max_version_parts": [9, 9, 9, 9],
         "auto_increment": true,
         "keep_firmware_count": 10

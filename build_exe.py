@@ -9,6 +9,7 @@ import os
 import sys
 import subprocess
 import shutil
+import re
 from pathlib import Path
 from tool_version_manager import ToolVersionManager
 
@@ -29,7 +30,7 @@ def install_pyinstaller():
         kwargs = {}
         if sys.platform == 'win32' and hasattr(subprocess, 'CREATE_NO_WINDOW'):
             kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"], **kwargs)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"], **kwargs)       
         print("✓ PyInstaller安装成功")
         return True
     except subprocess.CalledProcessError as e:
@@ -44,6 +45,10 @@ def increment_version():
         new_version = manager.auto_increment_version()
         if new_version:
             print(f"✓ 工具版本已递增到: {new_version}")
+            
+            # 更新tool_version_manager.py中的硬编码版本号
+            update_hardcoded_version(new_version)
+            
             return new_version
         else:
             print("✗ 版本号递增失败")
@@ -51,6 +56,39 @@ def increment_version():
     except Exception as e:
         print(f"✗ 版本号递增失败: {e}")
         return "1.0.0.0"
+
+def update_hardcoded_version(version):
+    """更新tool_version_manager.py中的硬编码版本号"""
+    try:
+        tool_version_manager_path = "tool_version_manager.py"
+        if not os.path.exists(tool_version_manager_path):
+            print(f"✗ 未找到文件: {tool_version_manager_path}")
+            return False
+        
+        # 读取文件内容
+        with open(tool_version_manager_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # 查找并替换硬编码版本号
+        pattern = r'hardcoded_version = "([^"]+)"'
+        replacement = f'hardcoded_version = "{version}"'
+        
+        if re.search(pattern, content):
+            new_content = re.sub(pattern, replacement, content)
+            
+            # 写回文件
+            with open(tool_version_manager_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+            
+            print(f"✓ 已更新tool_version_manager.py中的硬编码版本号为: {version}")
+            return True
+        else:
+            print("✗ 未找到硬编码版本号模式")
+            return False
+            
+    except Exception as e:
+        print(f"✗ 更新硬编码版本号失败: {e}")
+        return False
 
 def get_current_version():
     """获取当前版本号"""
@@ -118,7 +156,7 @@ exe = EXE(
     version_file=None,
 )
 '''
-    
+
     with open("IAR_Firmware_Publish_Tool.spec", "w", encoding="utf-8") as f:
         f.write(spec_content)
     print("✓ 创建spec文件成功（备用）")
@@ -129,13 +167,13 @@ SPEC_NAME_BASE = "IAR_Firmware_Publish_Tool"
 def create_fixed_spec_file(spec_name=SPEC_NAME_BASE):
     """创建固定名称的spec文件"""
     print(f"正在创建spec文件: {spec_name}.spec...")
-    
+
     # 清理之前的构建文件
     if os.path.exists("build"):
         shutil.rmtree("build")
     if os.path.exists("dist"):
         shutil.rmtree("dist")
-    
+
     try:
         # 第一步：生成spec文件（不构建exe）
         cmd = [
@@ -168,24 +206,24 @@ def create_fixed_spec_file(spec_name=SPEC_NAME_BASE):
 def build_exe_from_spec(version, spec_name=SPEC_NAME_BASE):
     """从spec文件构建exe文件"""
     print(f"正在从spec文件构建exe文件...")
-    
-    exe_name = f"{spec_name}_v{version}"
-    
+
+    exe_name = f"IAR_Firmware_Publish_Tool_v{version}"
+
     # 修改spec文件中的exe名称
     spec_file = f"{spec_name}.spec"
     if os.path.exists(spec_file):
         with open(spec_file, 'r', encoding='utf-8') as f:
             spec_content = f.read()
-        
+
         # 替换exe名称
         spec_content = spec_content.replace(
             f"name='{spec_name}'",
             f"name='{exe_name}'"
         )
-        
+
         with open(spec_file, 'w', encoding='utf-8') as f:
             f.write(spec_content)
-    
+
     try:
         # 第二步：从spec文件构建exe
         cmd = [
@@ -207,51 +245,51 @@ def build_exe_from_spec(version, spec_name=SPEC_NAME_BASE):
 def build_exe():
     """构建exe文件（两步过程）"""
     print("开始构建exe文件...")
-    
+
     # 递增版本号
     version = increment_version()
-    
+
     # 第一步：创建固定名称的spec文件
     if not create_fixed_spec_file():
         return False
-    
+
     # 第二步：从spec文件构建exe
     if not build_exe_from_spec(version):
         return False
-    
+
     return True
 
 def create_installer(version=None):
     """创建安装包"""
     print("创建安装包...")
-    
+
     # 获取版本号
     if not version:
         version = get_current_version()
-    
+
     # 创建发布目录
     release_dir = Path("release")
     release_dir.mkdir(exist_ok=True)
-    
+
     # exe文件已经直接生成在release目录中，无需复制
-    exe_name = f"IAR固件发布工具_v{version}.exe"
+    exe_name = f"IAR_Firmware_Publish_Tool_v{version}.exe"
     exe_path = release_dir / exe_name
     if exe_path.exists():
         print(f"✓ exe文件已在发布目录: {exe_name}")
     else:
         print("✗ 未找到exe文件")
-    
+
     # 复制配置文件
     config_files = ["config.json", "README.md"]
     for file in config_files:
         if os.path.exists(file):
             shutil.copy2(file, release_dir / file)
             print(f"✓ 复制{file}到发布目录")
-    
+
     # 创建用户配置目录
     user_config_dir = release_dir / "user_config"
     user_config_dir.mkdir(exist_ok=True)
-    
+
     # 创建示例用户配置
     example_user_config = {
         "project_settings": {
@@ -266,13 +304,13 @@ def create_installer(version=None):
             "bin_start_address": 0
         }
     }
-    
+
     import json
-    with open(release_dir / "user_config" / "example_user_config.json", "w", encoding="utf-8") as f:
+    with open(release_dir / "user_config" / "example_user_config.json", "w", encoding="utf-8") as f:   
         json.dump(example_user_config, f, indent=4, ensure_ascii=False)
-    
+
     print("✓ 创建示例用户配置文件")
-    
+
     # 创建使用说明
     usage_guide = """# IAR固件发布工具 - 使用说明
 
@@ -307,10 +345,10 @@ def create_installer(version=None):
 - 确保项目包含正确的#pragma location定义
 - 确保bin起始地址配置正确
 """
-    
+
     with open(release_dir / "使用说明.txt", "w", encoding="utf-8") as f:
         f.write(usage_guide)
-    
+
     print("✓ 创建使用说明")
     print(f"✓ 发布包已创建在: {release_dir.absolute()}")
 
@@ -319,33 +357,33 @@ def main():
     print("=" * 50)
     print("IAR固件发布工具 - 打包脚本")
     print("=" * 50)
-    
+
     # 检查PyInstaller
     if not check_pyinstaller():
         if not install_pyinstaller():
             print("无法安装PyInstaller，请手动安装：pip install pyinstaller")
             return False
-    
+
     # 构建exe
     if not build_exe():
         return False
-    
+
     # 获取当前版本号
     current_version = get_current_version()
-    
+
     # 创建安装包
     create_installer(current_version)
-    
+
     # 获取最终版本号
     final_version = get_current_version()
-    
+
     print("=" * 50)
     print("✓ 打包完成！")
     print(f"发布文件位于 release/ 目录")
     print(f"可执行文件: release/{SPEC_NAME_BASE}_v{final_version}.exe")
     print(f"版本号: {final_version}")
     print("=" * 50)
-    
+
     return True
 
 if __name__ == "__main__":
