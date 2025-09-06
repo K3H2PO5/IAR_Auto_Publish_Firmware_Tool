@@ -39,9 +39,9 @@ jobs:
     - name: List files
       run: |
         echo "Release directory:"
-        if exist release dir release
+        if (Test-Path "release") { Get-ChildItem "release" } else { echo "Release directory not found" }
         echo "Dist directory:"
-        if exist dist dir dist
+        if (Test-Path "dist") { Get-ChildItem "dist" } else { echo "Dist directory not found" }
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
