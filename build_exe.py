@@ -20,10 +20,10 @@ def check_pyinstaller():
     """Check if PyInstaller is installed"""
     try:
         import PyInstaller
-        print(f"✓ PyInstaller installed, version: {PyInstaller.__version__}")
+        print(f"[OK] PyInstaller installed, version: {PyInstaller.__version__}")
         return True
     except ImportError:
-        print("✗ PyInstaller not installed")
+        print("[ERROR] PyInstaller not installed")
         return False
 
 def install_pyinstaller():
@@ -32,10 +32,10 @@ def install_pyinstaller():
     try:
         subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"], 
                       check=True, capture_output=True, text=True)
-        print("✓ PyInstaller installed successfully")
+        print("[OK] PyInstaller installed successfully")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"✗ PyInstaller installation failed: {e}")
+        print(f"[ERROR] PyInstaller installation failed: {e}")
         return False
 
 def increment_version():
@@ -48,13 +48,13 @@ def increment_version():
         if result.returncode == 0:
             new_version = result.stdout.strip()
             if new_version:
-                print(f"✓ Tool version incremented to: {new_version}")
+                print(f"[OK] Tool version incremented to: {new_version}")
                 return new_version
         else:
-            print("✗ Version increment failed")
+            print("[ERROR] Version increment failed")
             return None
     except Exception as e:
-        print(f"✗ Version increment failed: {e}")
+        print(f"[ERROR] Version increment failed: {e}")
         return None
 
 def update_hardcoded_version(version):
@@ -62,7 +62,7 @@ def update_hardcoded_version(version):
     try:
         tool_version_manager_path = "tool_version_manager.py"
         if not os.path.exists(tool_version_manager_path):
-            print(f"✗ File not found: {tool_version_manager_path}")
+            print(f"[ERROR] File not found: {tool_version_manager_path}")
             return False
         
         with open(tool_version_manager_path, 'r', encoding='utf-8') as f:
@@ -75,13 +75,13 @@ def update_hardcoded_version(version):
             new_content = re.sub(pattern, replacement, content)
             with open(tool_version_manager_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
-            print(f"✓ Updated hardcoded version to: {version}")
+            print(f"[OK] Updated hardcoded version to: {version}")
             return True
         else:
-            print("✗ Hardcoded version pattern not found")
+            print("[ERROR] Hardcoded version pattern not found")
             return False
     except Exception as e:
-        print(f"✗ Failed to update hardcoded version: {e}")
+        print(f"[ERROR] Failed to update hardcoded version: {e}")
         return False
 
 def get_current_version():
@@ -93,10 +93,10 @@ def get_current_version():
         if match:
             return match.group(1)
         else:
-            print(f"✗ Failed to get version: {e}")
+            print(f"[ERROR] Failed to get version: {e}")
             return None
     except Exception as e:
-        print(f"✗ Failed to get version: {e}")
+        print(f"[ERROR] Failed to get version: {e}")
         return None
 
 def create_spec_file(spec_name, exe_name):
@@ -155,15 +155,15 @@ exe = EXE(
     backup_spec = f"{spec_name}_backup.spec"
     if os.path.exists(f"{spec_name}.spec"):
         shutil.copy2(f"{spec_name}.spec", backup_spec)
-        print("✓ Created backup spec file")
+        print("[OK] Created backup spec file")
     
     try:
         with open(f"{spec_name}.spec", "w", encoding="utf-8") as f:
             f.write(spec_content)
-        print(f"✓ Spec file created: {spec_name}.spec")
+        print(f"[OK] Spec file created: {spec_name}.spec")
         return True
     except Exception as e:
-        print(f"✗ Spec file creation failed: {e}")
+        print(f"[ERROR] Spec file creation failed: {e}")
         return False
 
 def build_exe_from_spec(spec_name, exe_name):
@@ -176,14 +176,14 @@ def build_exe_from_spec(spec_name, exe_name):
         result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8')
         
         if result.returncode == 0:
-            print(f"✓ Exe file built successfully: {exe_name}.exe")
+            print(f"[OK] Exe file built successfully: {exe_name}.exe")
             return True
         else:
-            print(f"✗ Exe file build failed: {e}")
+            print(f"[ERROR] Exe file build failed: {e}")
             print(f"Error output: {result.stderr}")
             return False
     except Exception as e:
-        print(f"✗ Exe file build failed: {e}")
+        print(f"[ERROR] Exe file build failed: {e}")
         return False
 
 def build_exe():
@@ -232,9 +232,9 @@ def create_release_package(final_version):
     
     if exe_path.exists():
         shutil.copy2(exe_path, release_dir / f"{exe_name}.exe")
-        print(f"✓ Exe file copied to release directory: {exe_name}")
+        print(f"[OK] Exe file copied to release directory: {exe_name}")
     else:
-        print("✗ Exe file not found")
+        print("[ERROR] Exe file not found")
         return False
     
     # Copy additional files
@@ -247,7 +247,7 @@ def create_release_package(final_version):
     for file in additional_files:
         if os.path.exists(file):
             shutil.copy2(file, release_dir)
-            print(f"✓ Copied {file} to release directory")
+            print(f"[OK] Copied {file} to release directory")
     
     # Copy docs directory
     if os.path.exists("docs"):
@@ -255,7 +255,7 @@ def create_release_package(final_version):
         if docs_dest.exists():
             shutil.rmtree(docs_dest)
         shutil.copytree("docs", docs_dest)
-        print("✓ Copied docs directory to release directory")
+        print("[OK] Copied docs directory to release directory")
     
     # Create usage guide
     usage_guide = f"""# IAR Firmware Publish Tool v{final_version}
@@ -279,8 +279,8 @@ def create_release_package(final_version):
     with open(release_dir / "使用说明.txt", "w", encoding="utf-8") as f:
         f.write(usage_guide)
     
-    print("✓ Created usage guide")
-    print(f"✓ Release package created in: {release_dir.absolute()}")
+    print("[OK] Created usage guide")
+    print(f"[OK] Release package created in: {release_dir.absolute()}")
     return True
 
 def main():
@@ -306,7 +306,7 @@ def main():
         print("Release package creation failed")
         return False
 
-    print("✓ Build completed!")
+    print("[OK] Build completed!")
     print(f"Release files located in {RELEASE_DIR}/ directory")
     print(f"Executable: {RELEASE_DIR}/{SPEC_NAME_BASE}_v{final_version}.exe")
     print(f"Version: {final_version}")
