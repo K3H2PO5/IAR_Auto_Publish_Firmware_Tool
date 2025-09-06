@@ -39,9 +39,19 @@ jobs:
     - name: List files
       run: |
         echo "Release directory:"
-        if (Test-Path "release") { Get-ChildItem "release" } else { echo "Release directory not found" }
+        if (Test-Path "release") { 
+          Get-ChildItem "release" -Recurse | Select-Object Name, Length
+          echo "Release directory file count: $((Get-ChildItem "release" -Recurse).Count)"
+        } else { echo "Release directory not found" }
         echo "Dist directory:"
-        if (Test-Path "dist") { Get-ChildItem "dist" } else { echo "Dist directory not found" }
+        if (Test-Path "dist") { 
+          Get-ChildItem "dist" -Recurse | Select-Object Name, Length
+          echo "Dist directory file count: $((Get-ChildItem "dist" -Recurse).Count)"
+        } else { echo "Dist directory not found" }
+        echo "Current working directory:"
+        Get-Location
+        echo "All files in current directory:"
+        Get-ChildItem | Select-Object Name, Length
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
