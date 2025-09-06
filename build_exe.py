@@ -46,12 +46,18 @@ def increment_version():
         result = subprocess.run([sys.executable, "increment_tool_version.py"], 
                               capture_output=True, text=True, encoding='utf-8')
         if result.returncode == 0:
-            new_version = result.stdout.strip()
-            if new_version:
+            # Get the last line which should be the version number
+            lines = result.stdout.strip().split('\n')
+            new_version = lines[-1].strip() if lines else ""
+            if new_version and re.match(r'\d+\.\d+\.\d+\.\d+', new_version):
                 print(f"[OK] Tool version incremented to: {new_version}")
                 return new_version
+            else:
+                print(f"[ERROR] Invalid version format: {new_version}")
+                return None
         else:
             print("[ERROR] Version increment failed")
+            print(f"Error output: {result.stderr}")
             return None
     except Exception as e:
         print(f"[ERROR] Version increment failed: {e}")
@@ -253,7 +259,10 @@ def create_release_package(final_version):
     if os.path.exists("docs"):
         docs_dest = release_dir / "docs"
         if docs_dest.exists():
-            shutil.rmtree(docs_dest)
+            if docs_dest.is_dir():
+                shutil.rmtree(docs_dest)
+            else:
+                docs_dest.unlink()
         shutil.copytree("docs", docs_dest)
         print("[OK] Copied docs directory to release directory")
     
