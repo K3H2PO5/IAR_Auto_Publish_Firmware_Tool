@@ -75,7 +75,14 @@ class ToolVersionManager:
                 else:
                     self.logger.warning("版本文件不存在，使用硬编码版本号")
                     # 在exe环境中使用硬编码的版本号
-                    hardcoded_version = "1.0.2.6"  # 这个版本号需要在打包时更新
+                    hardcoded_version = "Tool Version Increment Script
+==================================================
+Current version: 1.0.2.7
+New version: 1.0.2.8
+Updated version in main.py to: 1.0.2.8
+Version increment successful!
+Version updated from 1.0.2.7 to 1.0.2.8
+1.0.2.8"  # 这个版本号需要在打包时更新
                     self.logger.info(f"使用硬编码版本号: {hardcoded_version}")
                     return hardcoded_version
             

@@ -179,7 +179,7 @@ def build_exe_from_spec(spec_name, exe_name):
             print(f"[OK] Exe file built successfully: {exe_name}.exe")
             return True
         else:
-            print(f"[ERROR] Exe file build failed: {e}")
+            print(f"[ERROR] Exe file build failed")
             print(f"Error output: {result.stderr}")
             return False
     except Exception as e:
@@ -276,7 +276,7 @@ def create_release_package(final_version):
 {final_version}
 """
     
-    with open(release_dir / "使用说明.txt", "w", encoding="utf-8") as f:
+    with open(release_dir / "README.txt", "w", encoding="utf-8") as f:
         f.write(usage_guide)
     
     print("[OK] Created usage guide")

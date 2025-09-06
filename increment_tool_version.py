@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-工具版本递增脚本
-在打包exe文件时调用此脚本来递增工具版本号
+Tool Version Increment Script
+Called during exe packaging to increment tool version number
 """
 
 import os
@@ -12,13 +12,13 @@ from typing import Optional, Tuple
 
 def parse_version(version_str: str) -> Optional[Tuple[int, int, int, int]]:
     """
-    解析版本号字符串
+    Parse version string
     
     Args:
-        version_str: 版本号字符串，格式如 "1.0.1.9"
+        version_str: Version string, format like "1.0.1.9"
         
     Returns:
-        tuple: (major, minor, revision, build) 或 None
+        tuple: (major, minor, revision, build) or None
     """
     pattern = r'(\d+)\.(\d+)\.(\d+)\.(\d+)'
     match = re.match(pattern, version_str)
@@ -28,37 +28,37 @@ def parse_version(version_str: str) -> Optional[Tuple[int, int, int, int]]:
 
 def format_version(major: int, minor: int, revision: int, build: int) -> str:
     """
-    格式化版本号
+    Format version number
     
     Args:
-        major, minor, revision, build: 版本号各部分
+        major, minor, revision, build: Version number parts
         
     Returns:
-        str: 格式化后的版本号
+        str: Formatted version number
     """
     return f"{major}.{minor}.{revision}.{build}"
 
 def increment_version(major: int, minor: int, revision: int, build: int) -> Tuple[int, int, int, int]:
     """
-    递增版本号
-    注意：每个版本号部分都限制在0-9之间
+    Increment version number
+    Note: Each version part is limited to 0-9
     
     Args:
-        major, minor, revision, build: 当前版本号
+        major, minor, revision, build: Current version number
         
     Returns:
-        tuple: 递增后的版本号
+        tuple: Incremented version number
     """
-    # 确保版本号各部分都在0-9范围内
+    # Ensure version parts are within 0-9 range
     major = min(major, 9)
     minor = min(minor, 9)
     revision = min(revision, 9)
     build = min(build, 9)
     
-    # 从末位开始递增
+    # Increment from the last digit
     build += 1
     
-    # 检查是否需要进位
+    # Check if carry is needed
     if build > 9:
         build = 0
         revision += 1
@@ -72,50 +72,50 @@ def increment_version(major: int, minor: int, revision: int, build: int) -> Tupl
                 major += 1
                 
                 if major > 9:
-                    # 如果主版本号也超过9，重置为1
+                    # If major version also exceeds 9, reset to 1
                     major = 1
     
     return (major, minor, revision, build)
 
 def update_main_py_version(new_version: str) -> bool:
     """
-    更新main.py中的版本号
+    Update version number in main.py
     
     Args:
-        new_version: 新的版本号
+        new_version: New version number
         
     Returns:
-        bool: 是否更新成功
+        bool: Whether update was successful
     """
     try:
         main_py_path = "main.py"
         if not os.path.exists(main_py_path):
-            print(f"错误：找不到 {main_py_path}")
+            print(f"Error: Cannot find {main_py_path}")
             return False
         
-        # 读取文件内容
+        # Read file content
         with open(main_py_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # 查找并替换版本号
+        # Find and replace version number
         pattern = r'__version__ = "[\d\.]+"'
         replacement = f'__version__ = "{new_version}"'
         
         if re.search(pattern, content):
             new_content = re.sub(pattern, replacement, content)
             
-            # 写回文件
+            # Write back to file
             with open(main_py_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
             
-            print(f"已更新 main.py 中的版本号到: {new_version}")
+            print(f"Updated version in main.py to: {new_version}")
             return True
         else:
-            print("错误：在 main.py 中找不到版本号定义")
+            print("Error: Cannot find version definition in main.py")
             return False
             
     except Exception as e:
-        print(f"更新 main.py 版本号失败: {e}")
+        print(f"Failed to update version in main.py: {e}")
         return False
 
 def get_current_version() -> Optional[str]:
@@ -142,40 +142,42 @@ def get_current_version() -> Optional[str]:
         return None
         
     except Exception as e:
-        print(f"获取当前版本号失败: {e}")
+        print(f"Failed to get current version: {e}")
         return None
 
 def main():
-    """主函数"""
-    print("工具版本递增脚本")
+    """Main function"""
+    print("Tool Version Increment Script")
     print("=" * 50)
     
-    # 获取当前版本
+    # Get current version
     current_version = get_current_version()
     if not current_version:
-        print("错误：无法获取当前版本号")
+        print("Error: Cannot get current version")
         sys.exit(1)
     
-    print(f"当前版本: {current_version}")
+    print(f"Current version: {current_version}")
     
-    # 解析版本号
+    # Parse version
     version_tuple = parse_version(current_version)
     if not version_tuple:
-        print("错误：无法解析当前版本号")
+        print("Error: Cannot parse current version")
         sys.exit(1)
     
-    # 递增版本号
+    # Increment version
     new_version_tuple = increment_version(*version_tuple)
     new_version = format_version(*new_version_tuple)
     
-    print(f"新版本: {new_version}")
+    print(f"New version: {new_version}")
     
-    # 更新main.py中的版本号
+    # Update version in main.py
     if update_main_py_version(new_version):
-        print("版本号递增成功！")
-        print(f"版本已从 {current_version} 更新到 {new_version}")
+        print("Version increment successful!")
+        print(f"Version updated from {current_version} to {new_version}")
+        # Output the new version for build_exe.py to capture
+        print(new_version)
     else:
-        print("版本号递增失败！")
+        print("Version increment failed!")
         sys.exit(1)
 
 if __name__ == "__main__":
