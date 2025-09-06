@@ -18,12 +18,13 @@ class ConfigAnalyzer:
         """初始化配置分析器"""
         self.logger = logging.getLogger(__name__)
     
-    def analyze_config_file(self, config_file_path: str) -> Dict[str, int]:
+    def analyze_config_file(self, config_file_path: str, feature_settings: Dict = None) -> Dict[str, int]:
         """
         分析配置文件，提取二进制参数（仅支持IAR #pragma location定位方式）
         
         Args:
             config_file_path: 配置文件路径
+            feature_settings: 功能设置字典，包含关键字配置
             
         Returns:
             Dict[str, int]: 解析出的参数字典
@@ -33,11 +34,22 @@ class ConfigAnalyzer:
             'git_commit_id_offset': 0,
             'file_size_offset': 0,
             'bin_checksum_offset': 0,
+            'hash_value_offset': 0,
             'commit_id_size': 7,
             'crc_size': 4,
             'reserved_area_size': 512
             # 注意：不包含bin_start_address，因为它应该由用户设置
         }
+        
+        # 获取用户配置的关键字，如果没有则使用默认值
+        if feature_settings is None:
+            feature_settings = {}
+        
+        git_commit_id_keyword = feature_settings.get('git_commit_id_keyword', '__git_commit_id')
+        file_size_keyword = feature_settings.get('file_size_keyword', '__file_size')
+        bin_checksum_keyword = feature_settings.get('bin_checksum_keyword', '__bin_checksum')
+        hash_value_keyword = feature_settings.get('hash_value_keyword', '__hash_value')
+        firmware_version_keyword = feature_settings.get('firmware_version_keyword', '__Firmware_Version')
         
         try:
             if not os.path.exists(config_file_path):
@@ -47,58 +59,75 @@ class ConfigAnalyzer:
             with open(config_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # 查找__Firmware_Version的地址
-            fw_version_offset = self._find_pragma_location(content, r'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+const\s+char\s+__Firmware_Version[^;]*;')
+            # 查找固件版本的地址（使用用户配置的关键字）
+            fw_version_pattern = rf'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+const\s+char\s+{re.escape(firmware_version_keyword)}[^;]*;'
+            fw_version_offset = self._find_pragma_location(content, fw_version_pattern)
             if fw_version_offset is not None:
                 result['firmware_version_offset'] = fw_version_offset
-                self.logger.info(f"找到__Firmware_Version地址: 0x{fw_version_offset:X}")
+                self.logger.info(f"找到{firmware_version_keyword}地址: 0x{fw_version_offset:X}")
             
-            # 查找__git_commit_id的地址
-            commit_id_offset = self._find_pragma_location(content, r'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+const\s+char\s+__git_commit_id[^;]*;')
+            # 查找Git提交ID的地址（使用用户配置的关键字）
+            commit_id_pattern = rf'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+const\s+char\s+{re.escape(git_commit_id_keyword)}[^;]*;'
+            commit_id_offset = self._find_pragma_location(content, commit_id_pattern)
             if commit_id_offset is not None:
                 result['git_commit_id_offset'] = commit_id_offset
-                self.logger.info(f"找到__git_commit_id地址: 0x{commit_id_offset:X}")
+                self.logger.info(f"找到{git_commit_id_keyword}地址: 0x{commit_id_offset:X}")
             
-            # 查找__file_size的地址
-            file_size_offset = self._find_pragma_location(content, r'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+volatile\s+const\s+uint32_t\s+__file_size[^;]*;')
+            # 查找文件大小的地址（使用用户配置的关键字）
+            file_size_pattern = rf'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+volatile\s+const\s+uint32_t\s+{re.escape(file_size_keyword)}[^;]*;'
+            file_size_offset = self._find_pragma_location(content, file_size_pattern)
             if file_size_offset is not None:
                 result['file_size_offset'] = file_size_offset
-                self.logger.info(f"找到__file_size地址: 0x{file_size_offset:X}")
+                self.logger.info(f"找到{file_size_keyword}地址: 0x{file_size_offset:X}")
             
-            # 查找__bin_checksum的地址
-            checksum_offset = self._find_pragma_location(content, r'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+volatile\s+const\s+uint32_t\s+__bin_checksum[^;]*;')
+            # 查找二进制校验和的地址（使用用户配置的关键字）
+            checksum_pattern = rf'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+volatile\s+const\s+uint32_t\s+{re.escape(bin_checksum_keyword)}[^;]*;'
+            checksum_offset = self._find_pragma_location(content, checksum_pattern)
             if checksum_offset is not None:
                 result['bin_checksum_offset'] = checksum_offset
-                self.logger.info(f"找到__bin_checksum地址: 0x{checksum_offset:X}")
+                self.logger.info(f"找到{bin_checksum_keyword}地址: 0x{checksum_offset:X}")
             
-            # 查找数组大小定义
-            commit_id_size = self._find_array_size(content, r'__git_commit_id\[(\d+)\]')
+            # 查找哈希校验和的地址（使用用户配置的关键字）
+            # 支持uint32_t和uint8_t数组类型
+            hash_value_pattern = rf'#pragma\s+location\s*=\s*0x([0-9a-fA-F]+)\s*\n\s*__root\s+volatile\s+const\s+(?:uint32_t|uint8_t)\s+{re.escape(hash_value_keyword)}(?:\[\d+\])?[^;]*;'
+            hash_value_offset = self._find_pragma_location(content, hash_value_pattern)
+            if hash_value_offset is not None:
+                result['hash_value_offset'] = hash_value_offset
+                self.logger.info(f"找到{hash_value_keyword}地址: 0x{hash_value_offset:X}")
+            
+            # 查找数组大小定义（使用用户配置的关键字）
+            commit_id_size_pattern = rf'{re.escape(git_commit_id_keyword)}\[(\d+)\]'
+            commit_id_size = self._find_array_size(content, commit_id_size_pattern)
             if commit_id_size is not None:
                 result['commit_id_size'] = commit_id_size
-                self.logger.info(f"找到__git_commit_id数组大小: {commit_id_size}")
+                self.logger.info(f"找到{git_commit_id_keyword}数组大小: {commit_id_size}")
             
             # 检查是否找到了所有必需的地址
             missing_addresses = []
             if result['firmware_version_offset'] == 0:
-                missing_addresses.append("__Firmware_Version")
+                missing_addresses.append(firmware_version_keyword)
             if result['git_commit_id_offset'] == 0:
-                missing_addresses.append("__git_commit_id")
+                missing_addresses.append(git_commit_id_keyword)
             if result['file_size_offset'] == 0:
-                missing_addresses.append("__file_size")
+                missing_addresses.append(file_size_keyword)
             if result['bin_checksum_offset'] == 0:
-                missing_addresses.append("__bin_checksum")
+                missing_addresses.append(bin_checksum_keyword)
+            if result['hash_value_offset'] == 0:
+                missing_addresses.append(hash_value_keyword)
             
             if missing_addresses:
                 self.logger.error(f"配置文件中缺少以下地址定义: {', '.join(missing_addresses)}")
                 self.logger.error("请确保配置文件中包含以下格式的定义:")
                 self.logger.error("#pragma location=0x08004410")
-                self.logger.error("__root const char __Firmware_Version[10] = \"V1.0.0.0\";")
-                self.logger.error("#pragma location=0x08004420")
-                self.logger.error("__root const char __git_commit_id[7] = \"\";")
-                self.logger.error("#pragma location=0x08004430")
-                self.logger.error("__root volatile const uint32_t __file_size = 0;")
-                self.logger.error("#pragma location=0x08004434")
-                self.logger.error("__root volatile const uint32_t __bin_checksum = 0;")
+                self.logger.error(f"__root const char {firmware_version_keyword}[10] = \"V1.0.0.0\";")
+                self.logger.error(f"#pragma location=0x08004420")
+                self.logger.error(f"__root const char {git_commit_id_keyword}[7] = \"\";")
+                self.logger.error(f"#pragma location=0x08004430")
+                self.logger.error(f"__root volatile const uint32_t {file_size_keyword} = 0;")
+                self.logger.error(f"#pragma location=0x08004434")
+                self.logger.error(f"__root volatile const uint32_t {bin_checksum_keyword} = 0;")
+                self.logger.error(f"#pragma location=0x08004438")
+                self.logger.error(f"__root volatile const uint32_t {hash_value_keyword} = 0;")
             else:
                 self.logger.info(f"配置分析完成: {result}")
             
@@ -197,12 +226,13 @@ class ConfigAnalyzer:
         self.logger.warning("未找到配置文件")
         return None
     
-    def validate_config(self, config: Dict[str, int]) -> Tuple[bool, str]:
+    def validate_config(self, config: Dict[str, int], feature_settings: Dict = None) -> Tuple[bool, str]:
         """
         验证配置参数
         
         Args:
             config: 配置字典
+            feature_settings: 功能设置字典，用于确定哪些字段是必需的
             
         Returns:
             Tuple[bool, str]: (是否有效, 错误信息)
@@ -212,17 +242,26 @@ class ConfigAnalyzer:
         if config['firmware_version_offset'] == 0:
             missing_fields.append("__Firmware_Version地址")
         
-        if config['git_commit_id_offset'] == 0:
-            missing_fields.append("__git_commit_id地址")
+        # 根据功能设置检查必需的字段
+        if feature_settings is None:
+            feature_settings = {}
         
-        if config['file_size_offset'] == 0:
-            missing_fields.append("__file_size地址")
+        if feature_settings.get('enable_git_commit_id', True) and config['git_commit_id_offset'] == 0:
+            keyword = feature_settings.get('git_commit_id_keyword', '__git_commit_id')
+            missing_fields.append(f"{keyword}地址")
         
-        if config['bin_checksum_offset'] == 0:
-            missing_fields.append("__bin_checksum地址")
+        if feature_settings.get('enable_file_size', True) and config['file_size_offset'] == 0:
+            keyword = feature_settings.get('file_size_keyword', '__file_size')
+            missing_fields.append(f"{keyword}地址")
         
-        if config['commit_id_size'] == 0:
-            missing_fields.append("__git_commit_id数组大小")
+        if feature_settings.get('enable_bin_checksum', True) and config['bin_checksum_offset'] == 0:
+            keyword = feature_settings.get('bin_checksum_keyword', '__bin_checksum')
+            missing_fields.append(f"{keyword}地址")
+        
+        # 如果启用了Git提交ID功能，检查数组大小
+        if feature_settings.get('enable_git_commit_id', True) and config['commit_id_size'] == 0:
+            keyword = feature_settings.get('git_commit_id_keyword', '__git_commit_id')
+            missing_fields.append(f"{keyword}数组大小")
         
         if missing_fields:
             return False, f"配置文件中缺少以下必需的定义: {', '.join(missing_fields)}。请检查配置文件是否包含正确的#pragma location定义。"

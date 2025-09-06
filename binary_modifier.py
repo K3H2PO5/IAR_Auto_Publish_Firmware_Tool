@@ -17,14 +17,16 @@ from pathlib import Path
 class BinaryModifier:
     """二进制文件修改器"""
     
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, feature_settings: dict = None):
         """
         初始化二进制文件修改器
         
         Args:
             config: 配置字典，包含二进制文件相关设置
+            feature_settings: 功能设置字典，控制哪些功能启用
         """
         self.config = config
+        self.feature_settings = feature_settings or {}
         self.logger = logging.getLogger(__name__)
         
         # 从配置中获取偏移量和大小
@@ -32,34 +34,73 @@ class BinaryModifier:
         self.git_commit_id_offset = config.get('git_commit_id_offset', 0)
         self.file_size_offset = config.get('file_size_offset', 0)
         self.bin_checksum_offset = config.get('bin_checksum_offset', 0)
+        self.hash_value_offset = config.get('hash_value_offset', 0)
+        
+        # 调试信息
+        self.logger.info(f"BinaryModifier配置 - firmware_version_offset: 0x{self.firmware_version_offset:X}")
+        self.logger.info(f"BinaryModifier配置 - git_commit_id_offset: 0x{self.git_commit_id_offset:X}")
+        self.logger.info(f"BinaryModifier配置 - file_size_offset: 0x{self.file_size_offset:X}")
+        self.logger.info(f"BinaryModifier配置 - bin_checksum_offset: 0x{self.bin_checksum_offset:X}")
+        self.logger.info(f"BinaryModifier配置 - hash_value_offset: 0x{self.hash_value_offset:X}")
         self.commit_id_size = config.get('commit_id_size', 7)
         self.crc_size = config.get('crc_size', 4)
         self.reserved_area_size = config.get('reserved_area_size', 0x200)
-        self.bin_start_address = config.get('bin_start_address', 0)
+        # 从binary_settings中获取bin_start_address，如果没有则从根级别获取
+        binary_settings = config.get('binary_settings', {})
+        self.bin_start_address = binary_settings.get('bin_start_address', 0) or config.get('bin_start_address', 0)
         self.logger.info(f"BinaryModifier初始化 - bin_start_address: 0x{self.bin_start_address:08X} ({self.bin_start_address})")
         
-        # 验证配置是否有效
+        # 获取功能启用状态
+        self.enable_git_commit_id = self.feature_settings.get('enable_git_commit_id', True)
+        self.enable_file_size = self.feature_settings.get('enable_file_size', True)
+        self.enable_bin_checksum = self.feature_settings.get('enable_bin_checksum', True)
+        self.enable_hash_value = self.feature_settings.get('enable_hash_value', True)
+        
+        self.logger.info(f"功能启用状态 - Git提交ID: {self.enable_git_commit_id}, 文件大小: {self.enable_file_size}, 校验和: {self.enable_bin_checksum}")
+        
+        # 验证配置是否有效（只验证启用的功能）
         if self.firmware_version_offset == 0:
             raise ValueError("firmware_version_offset未配置，请检查配置文件")
-        if self.git_commit_id_offset == 0:
-            raise ValueError("git_commit_id_offset未配置，请检查配置文件")
-        if self.file_size_offset == 0:
-            raise ValueError("file_size_offset未配置，请检查配置文件")
-        if self.bin_checksum_offset == 0:
-            raise ValueError("bin_checksum_offset未配置，请检查配置文件")
         if self.bin_start_address == 0:
             raise ValueError("bin_start_address未配置，请在设置中配置bin起始地址")
         
+        # 只验证启用的功能
+        if self.enable_git_commit_id and self.git_commit_id_offset == 0:
+            raise ValueError("git_commit_id_offset未配置，请检查配置文件或禁用Git提交ID功能")
+        if self.enable_file_size and self.file_size_offset == 0:
+            raise ValueError("file_size_offset未配置，请检查配置文件或禁用文件大小功能")
+        if self.enable_bin_checksum and self.bin_checksum_offset == 0:
+            raise ValueError("bin_checksum_offset未配置，请检查配置文件或禁用校验和功能")
+        if self.enable_hash_value and self.hash_value_offset == 0:
+            raise ValueError("hash_value_offset未配置，请检查配置文件或禁用哈希校验和功能")
+        
         # 计算实际偏移量（配置中的偏移量是绝对地址，需要减去bin起始地址）
         self.actual_firmware_version_offset = self.firmware_version_offset - self.bin_start_address
-        self.actual_git_commit_id_offset = self.git_commit_id_offset - self.bin_start_address
-        self.actual_file_size_offset = self.file_size_offset - self.bin_start_address
-        self.actual_bin_checksum_offset = self.bin_checksum_offset - self.bin_start_address
-        
         self.logger.info(f"固件版本偏移量: 0x{self.firmware_version_offset:X} -> 相对偏移: 0x{self.actual_firmware_version_offset:X}")
-        self.logger.info(f"Git提交ID偏移量: 0x{self.git_commit_id_offset:X} -> 相对偏移: 0x{self.actual_git_commit_id_offset:X}")
-        self.logger.info(f"文件大小偏移量: 0x{self.file_size_offset:X} -> 相对偏移: 0x{self.actual_file_size_offset:X}")
-        self.logger.info(f"校验和偏移量: 0x{self.bin_checksum_offset:X} -> 相对偏移: 0x{self.actual_bin_checksum_offset:X}")
+        
+        if self.enable_git_commit_id:
+            self.actual_git_commit_id_offset = self.git_commit_id_offset - self.bin_start_address
+            self.logger.info(f"Git提交ID偏移量: 0x{self.git_commit_id_offset:X} -> 相对偏移: 0x{self.actual_git_commit_id_offset:X}")
+        else:
+            self.actual_git_commit_id_offset = 0
+            
+        if self.enable_file_size:
+            self.actual_file_size_offset = self.file_size_offset - self.bin_start_address
+            self.logger.info(f"文件大小偏移量: 0x{self.file_size_offset:X} -> 相对偏移: 0x{self.actual_file_size_offset:X}")
+        else:
+            self.actual_file_size_offset = 0
+            
+        if self.enable_bin_checksum:
+            self.actual_bin_checksum_offset = self.bin_checksum_offset - self.bin_start_address
+            self.logger.info(f"校验和偏移量: 0x{self.bin_checksum_offset:X} -> 相对偏移: 0x{self.actual_bin_checksum_offset:X}")
+        else:
+            self.actual_bin_checksum_offset = 0
+            
+        if self.enable_hash_value:
+            self.actual_hash_value_offset = self.hash_value_offset - self.bin_start_address
+            self.logger.info(f"哈希校验和偏移量: 0x{self.hash_value_offset:X} -> 相对偏移: 0x{self.actual_hash_value_offset:X}")
+        else:
+            self.actual_hash_value_offset = 0
     
     def calculate_crc32(self, data: bytes) -> int:
         """
@@ -255,6 +296,38 @@ class BinaryModifier:
             self.logger.error(f"写入CRC失败: {e}")
             return False
     
+    def write_hash_value(self, file_path: str, hash_value: int) -> bool:
+        """
+        写入哈希校验和值到二进制文件
+        
+        Args:
+            file_path: 二进制文件路径
+            hash_value: 哈希校验和值（magic数）
+            
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            file_size = os.path.getsize(file_path)
+            # 由于__hash_value是32字节数组，需要写入32字节
+            hash_size = 32
+            if self.actual_hash_value_offset + hash_size > file_size:
+                self.logger.error(f"哈希校验和偏移量超出文件大小: {self.actual_hash_value_offset + hash_size} > {file_size}")
+                return False
+            
+            with open(file_path, 'r+b') as f:
+                f.seek(self.actual_hash_value_offset)
+                # 将magic数转换为32字节的字节数组
+                # 前4字节是magic数，其余28字节填充0
+                hash_bytes = struct.pack('<I', hash_value) + b'\x00' * 28
+                f.write(hash_bytes)
+            
+            self.logger.info(f"成功写入哈希校验和值: 0x{hash_value:08X} 到偏移量 0x{self.actual_hash_value_offset:X} (32字节)")
+            return True
+        except Exception as e:
+            self.logger.error(f"写入哈希校验和值失败: {e}")
+            return False
+    
     def read_commit_id(self, file_path: str) -> Optional[str]:
         """
         从bin文件中读取commit ID
@@ -365,36 +438,67 @@ class BinaryModifier:
                 self.logger.info(f"跳过固件版本写入（编译时已正确设置）: {firmware_version}")
                 result_info['firmware_version_written'] = False  # 标记为未写入
             
-            # 写入commit ID
-            if not self.write_commit_id(file_path, commit_id):
-                return False, "写入commit ID失败", result_info
+            # 写入commit ID（如果启用）
+            if self.enable_git_commit_id:
+                if not self.write_commit_id(file_path, commit_id):
+                    return False, "写入commit ID失败", result_info
+                result_info['commit_id_written'] = True
+                self.logger.info("Git提交ID写入成功")
+            else:
+                self.logger.info("Git提交ID功能已禁用，跳过写入")
+                result_info['commit_id_written'] = False
             
-            result_info['commit_id_written'] = True
+            # 写入文件大小（如果启用）
+            if self.enable_file_size:
+                if not self.write_file_size(file_path, result_info['file_size']):
+                    return False, "写入文件大小失败", result_info
+                result_info['file_size_written'] = True
+                self.logger.info("文件大小写入成功")
+            else:
+                self.logger.info("文件大小功能已禁用，跳过写入")
+                result_info['file_size_written'] = False
             
-            # 写入文件大小（修改前后文件大小不变）
-            if not self.write_file_size(file_path, result_info['file_size']):
-                return False, "写入文件大小失败", result_info
+            # 计算并写入CRC（如果启用）
+            if self.enable_bin_checksum:
+                crc_value = self.calculate_file_crc(file_path)
+                result_info['crc_calculated'] = crc_value
+                
+                if not self.write_crc(file_path, crc_value):
+                    return False, "写入CRC失败", result_info
+                result_info['crc_written'] = True
+                self.logger.info("CRC校验和写入成功")
+            else:
+                self.logger.info("CRC校验和功能已禁用，跳过写入")
+                result_info['crc_calculated'] = 0
+                result_info['crc_written'] = False
             
-            result_info['file_size_written'] = True
+            # 写入哈希校验和（如果启用）
+            if self.enable_hash_value:
+                # 使用magic数作为哈希值，后续可以替换为实际算法
+                magic_hash_value = 0x12345678
+                result_info['hash_value'] = magic_hash_value
+                
+                if not self.write_hash_value(file_path, magic_hash_value):
+                    return False, "写入哈希校验和失败", result_info
+                result_info['hash_value_written'] = True
+                self.logger.info("哈希校验和写入成功")
+            else:
+                self.logger.info("哈希校验和功能已禁用，跳过写入")
+                result_info['hash_value'] = 0
+                result_info['hash_value_written'] = False
             
-            # 计算并写入CRC
-            crc_value = self.calculate_file_crc(file_path)
-            result_info['crc_calculated'] = crc_value
-            
-            if not self.write_crc(file_path, crc_value):
-                return False, "写入CRC失败", result_info
-            
-            result_info['crc_written'] = True
-            
-            # 验证写入结果
-            read_commit_id = self.read_commit_id(file_path)
-            read_crc = self.read_crc(file_path)
-            
+            # 验证写入结果（只验证启用的功能）
             success_msg = f"二进制文件修改成功\n"
             success_msg += f"文件: {file_path}\n"
             success_msg += f"大小: {result_info['file_size']} 字节\n"
-            success_msg += f"Commit ID: {commit_id} -> {read_commit_id}\n"
-            success_msg += f"CRC: 0x{crc_value:08X} -> 0x{read_crc:08X}"
+            
+            if self.enable_git_commit_id:
+                read_commit_id = self.read_commit_id(file_path)
+                success_msg += f"Commit ID: {commit_id} -> {read_commit_id}\n"
+            
+            if self.enable_bin_checksum:
+                read_crc = self.read_crc(file_path)
+                success_msg += f"CRC: 0x{result_info['crc_calculated']:08X} -> 0x{read_crc:08X}"
             
             return True, success_msg, result_info
             

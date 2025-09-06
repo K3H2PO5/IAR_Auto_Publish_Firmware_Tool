@@ -5,7 +5,7 @@
 IAR固件发布工具 - 带GUI界面的Windows应用程序
 """
 
-__version__ = "1.0.3.1"
+__version__ = "1.0.3.4"
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
@@ -50,6 +50,7 @@ LANGUAGES = {
             'firmware_version': '固件版本:',
             'git_status': 'Git状态:',
             'iar_path_display': 'IAR路径:',
+            'flash_start_addr': 'Flash起始地址:',
             'settings_title': '设置',
             'project_settings': '项目设置',
             'binary_settings': '二进制设置',
@@ -96,6 +97,17 @@ LANGUAGES = {
             'msg_select_iar_directory_error': '选择IAR目录时出错',
             'msg_not_git_repo': '当前目录不是Git仓库',
             'msg_cannot_get_commit_id': '无法获取commit ID',
+            'feature_settings': '功能设置',
+            'enable_git_commit_id': 'Git提交ID',
+            'enable_file_size': '文件大小',
+            'enable_bin_checksum': '二进制校验和',
+            'enable_hash_value': '哈希校验和',
+            'git_commit_id_keyword': '变量名称:',
+            'file_size_keyword': '变量名称:',
+            'bin_checksum_keyword': '变量名称:',
+            'hash_value_keyword': '变量名称:',
+            'firmware_version_keyword': '固件版本变量名称:',
+            'feature_settings_desc': '选择要启用的功能模块，禁用后相关功能将不会执行',
             'msg_compile_success_no_bin': '编译成功但未找到输出bin文件',
             'msg_compile_complete': '编译完成！',
             'msg_compile_exception': '编译流程异常',
@@ -138,6 +150,7 @@ LANGUAGES = {
             'firmware_version': '固件版本:',
             'git_status': 'Git狀態:',
             'iar_path_display': 'IAR路徑:',
+            'flash_start_addr': 'Flash起始位址:',
             'settings_title': '設定',
             'project_settings': '專案設定',
             'binary_settings': '二進位設定',
@@ -184,6 +197,17 @@ LANGUAGES = {
             'msg_select_iar_directory_error': '選擇IAR目錄時出錯',
             'msg_not_git_repo': '當前目錄不是Git倉庫',
             'msg_cannot_get_commit_id': '無法獲取commit ID',
+            'feature_settings': '功能設置',
+            'enable_git_commit_id': 'Git提交ID',
+            'enable_file_size': '檔案大小',
+            'enable_bin_checksum': '二進制校驗和',
+            'enable_hash_value': '哈希校驗和',
+            'git_commit_id_keyword': '變數名稱:',
+            'file_size_keyword': '變數名稱:',
+            'bin_checksum_keyword': '變數名稱:',
+            'hash_value_keyword': '變數名稱:',
+            'firmware_version_keyword': '固件版本變數名稱:',
+            'feature_settings_desc': '選擇要啟用的功能模組，禁用後相關功能將不會執行',
             'msg_compile_success_no_bin': '編譯成功但未找到輸出bin檔案',
             'msg_compile_complete': '編譯完成！',
             'msg_compile_exception': '編譯流程異常',
@@ -226,6 +250,7 @@ LANGUAGES = {
             'firmware_version': 'Firmware Version:',
             'git_status': 'Git Status:',
             'iar_path_display': 'IAR Path:',
+            'flash_start_addr': 'Flash Start Address:',
             'settings_title': 'Settings',
             'project_settings': 'Project Settings',
             'binary_settings': 'Binary Settings',
@@ -272,6 +297,17 @@ LANGUAGES = {
             'msg_select_iar_directory_error': 'Error Selecting IAR Directory',
             'msg_not_git_repo': 'Current directory is not a Git repository',
             'msg_cannot_get_commit_id': 'Cannot get commit ID',
+            'feature_settings': 'Feature Settings',
+            'enable_git_commit_id': 'Git Commit ID',
+            'enable_file_size': 'File Size',
+            'enable_bin_checksum': 'Binary Checksum',
+            'enable_hash_value': 'Hash Value',
+            'git_commit_id_keyword': 'Variable Name:',
+            'file_size_keyword': 'Variable Name:',
+            'bin_checksum_keyword': 'Variable Name:',
+            'hash_value_keyword': 'Variable Name:',
+            'firmware_version_keyword': 'Firmware Version Variable Name:',
+            'feature_settings_desc': 'Select which feature modules to enable. Disabled features will not be executed.',
             'msg_compile_success_no_bin': 'Compilation successful but no output bin file found',
             'msg_compile_complete': 'Compilation Complete!',
             'msg_compile_exception': 'Compilation Process Exception',
@@ -334,6 +370,9 @@ class MCUAutoBuildApp:
         
         # 加载用户配置到界面
         self._load_user_config_to_ui()
+        
+        # 初始化flash起始地址显示
+        self._update_flash_start_addr_display()
         
         # 初始化日志
         self.setup_logging()
@@ -411,8 +450,8 @@ class MCUAutoBuildApp:
                 self._create_user_config()
             
             # 优先加载语言设置（在界面创建之前）
-            if 'ui_settings' in self.config and 'language' in self.config['ui_settings']:
-                language = self.config['ui_settings']['language']
+            if 'language' in self.config:
+                language = self.config['language']
                 if language in LANGUAGES:
                     self.set_language(language)
                     self.log_message(f"语言设置已加载: {LANGUAGES[language]['name']}")
@@ -422,7 +461,7 @@ class MCUAutoBuildApp:
                 self.log_message("未找到语言设置，使用默认语言")
             
             # 初始化路径管理器和配置分析器 - 使用用户指定的项目路径
-            project_path = self.config.get('project_settings', {}).get('project_path', '')
+            project_path = self.config.get('project_path', '')
             if not project_path or not os.path.exists(project_path):
                 project_path = os.path.dirname(os.path.abspath(__file__))  # 使用脚本所在目录
                 self.log_message(f"使用脚本所在目录作为项目路径: {project_path}")
@@ -437,7 +476,7 @@ class MCUAutoBuildApp:
             if not self.config.get('binary_settings', {}).get('config_file'):
                 config_file = self.config_analyzer.find_config_file(project_path)
                 if config_file:
-                    self.config['binary_settings']['config_file'] = config_file
+                    self.config['config_file'] = config_file
                     self.log_message(f"自动找到配置文件: {config_file}")
             
         except Exception as e:
@@ -449,22 +488,8 @@ class MCUAutoBuildApp:
     def _merge_user_config(self, user_config: dict):
         """合并用户配置到默认配置"""
         try:
-            # 合并用户配置中的项目设置、二进制设置和UI设置
-            if 'project_settings' in user_config:
-                if 'project_settings' not in self.config:
-                    self.config['project_settings'] = {}
-                self.config['project_settings'].update(user_config['project_settings'])
-            
-            if 'binary_settings' in user_config:
-                if 'binary_settings' not in self.config:
-                    self.config['binary_settings'] = {}
-                self.config['binary_settings'].update(user_config['binary_settings'])
-            
-            if 'ui_settings' in user_config:
-                if 'ui_settings' not in self.config:
-                    self.config['ui_settings'] = {}
-                self.config['ui_settings'].update(user_config['ui_settings'])
-            
+            # 直接合并用户配置到主配置
+            self.config.update(user_config)
             self.log_message("用户配置合并成功")
         except Exception as e:
             self.log_message(f"合并用户配置失败: {e}")
@@ -473,20 +498,19 @@ class MCUAutoBuildApp:
         """创建用户配置文件"""
         try:
             user_config = {
-                "project_settings": {
                     "iar_installation_path": "",
                     "project_path": "",
                     "fw_publish_directory": "./fw_publish",
                     "remote_publish_directory": "",
                     "enable_remote_publish": False,
-                    "info_file": ""
-                },
-                "binary_settings": {
-                    "bin_start_address": 134217728
-                },
-                "ui_settings": {
-                    "language": "zh_CN"
-                }
+                "info_file": "",
+                "language": "zh_CN",
+                "enable_git_commit_id": True,
+                "enable_file_size": True,
+                "enable_bin_checksum": True,
+                "git_commit_id_keyword": "__git_commit_id",
+                "file_size_keyword": "__file_size",
+                "bin_checksum_keyword": "__bin_checksum"
             }
             
             with open("user_config.json", 'w', encoding='utf-8') as f:
@@ -500,13 +524,13 @@ class MCUAutoBuildApp:
         """将用户配置加载到界面"""
         try:
             # 加载项目路径
-            project_path = self.config.get('project_settings', {}).get('project_path', '')
+            project_path = self.config.get('project_path', '')
             if project_path:
                 self.project_path_var.set(project_path)
                 self.log_message(f"已加载项目路径: {project_path}")
             
             # 加载IAR路径并显示
-            iar_path = self.config.get('project_settings', {}).get('iar_installation_path', '')
+            iar_path = self.config.get('iar_installation_path', '')
             if iar_path:
                 self.iar_path_display_var.set(iar_path)
                 self.log_message(f"已加载IAR路径: {iar_path}")
@@ -515,13 +539,15 @@ class MCUAutoBuildApp:
                 self.log_message("IAR路径未配置")
             
             # 加载信息文件信息
-            info_file = self.config.get('project_settings', {}).get('info_file', '')
+            info_file = self.config.get('info_file', '')
             if info_file:
                 self.log_message(f"已加载信息文件: {info_file}")
             
-            # 加载bin起始地址信息
-            bin_start_address = self.config.get('binary_settings', {}).get('bin_start_address', 0)
-            self.log_message(f"已加载bin起始地址: 0x{bin_start_address:08X}")
+            # 加载功能设置信息
+            enable_git_commit_id = self.config.get('enable_git_commit_id', True)
+            enable_file_size = self.config.get('enable_file_size', True)
+            enable_bin_checksum = self.config.get('enable_bin_checksum', True)
+            self.log_message(f"功能设置 - Git提交ID: {enable_git_commit_id}, 文件大小: {enable_file_size}, 校验和: {enable_bin_checksum}")
             
         except Exception as e:
             self.log_message(f"加载用户配置到界面失败: {e}")
@@ -592,7 +618,7 @@ class MCUAutoBuildApp:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(3, weight=1)
+        main_frame.rowconfigure(7, weight=1)
         
         # 标题
         title_label = ttk.Label(main_frame, text=self.get_text('app_title'), 
@@ -607,34 +633,39 @@ class MCUAutoBuildApp:
         # 项目路径
         ttk.Label(info_frame, text=self.get_text('project_path')).grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
         # 优先使用配置中的项目路径，如果没有则使用脚本所在目录
-        initial_project_path = self.config.get('project_settings', {}).get('project_path', os.path.dirname(os.path.abspath(__file__)))
+        initial_project_path = self.config.get('project_path', os.path.dirname(os.path.abspath(__file__)))
         self.project_path_var = tk.StringVar(value=initial_project_path)
         ttk.Entry(info_frame, textvariable=self.project_path_var, state="readonly").grid(
             row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
         ttk.Button(info_frame, text=self.get_text('browse'), command=self.browse_project_path).grid(row=0, column=2)
         
-        # Git状态
-        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
-        self.git_status_var = tk.StringVar(value=self.get_text('not_checked'))
-        ttk.Label(info_frame, textvariable=self.git_status_var, foreground="orange").grid(
-            row=1, column=1, sticky=tk.W)
-        
-        
         # IAR路径
-        ttk.Label(info_frame, text=self.get_text('iar_path_display')).grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(info_frame, text=self.get_text('iar_path_display')).grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
         self.iar_path_display_var = tk.StringVar(value=self.get_text('not_configured'))
         iar_path_label = ttk.Label(info_frame, textvariable=self.iar_path_display_var, foreground="green")
-        iar_path_label.grid(row=2, column=1, sticky=(tk.W, tk.E))
+        iar_path_label.grid(row=1, column=1, sticky=(tk.W, tk.E))
+        
+        # Flash起始地址
+        ttk.Label(info_frame, text=self.get_text('flash_start_addr')).grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
+        self.flash_start_addr_var = tk.StringVar(value=self.get_text('not_checked'))
+        ttk.Label(info_frame, textvariable=self.flash_start_addr_var, foreground="purple").grid(
+            row=2, column=1, sticky=tk.W)
+        
+        # Git状态
+        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
+        self.git_status_var = tk.StringVar(value=self.get_text('not_checked'))
+        ttk.Label(info_frame, textvariable=self.git_status_var, foreground="orange").grid(
+            row=3, column=1, sticky=tk.W)
         
         # 固件版本
-        ttk.Label(info_frame, text=self.get_text('firmware_version')).grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(info_frame, text=self.get_text('firmware_version')).grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
         self.firmware_version_var = tk.StringVar(value=self.get_text('not_checked'))
         ttk.Label(info_frame, textvariable=self.firmware_version_var, foreground="blue").grid(
-            row=3, column=1, sticky=tk.W)
+            row=4, column=1, sticky=tk.W)
         
         # 操作按钮框架
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=4, column=0, columnspan=3, pady=(0, 10))
+        button_frame.grid(row=5, column=0, columnspan=3, pady=(0, 10))
         
         # 按钮
         ttk.Button(button_frame, text=self.get_text('check_git'), command=self.check_git_status).pack(side=tk.LEFT, padx=(0, 10))
@@ -647,11 +678,11 @@ class MCUAutoBuildApp:
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, 
                                           mode='indeterminate')
-        self.progress_bar.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.progress_bar.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
         
         # 日志输出框架
         log_frame = ttk.LabelFrame(main_frame, text=self.get_text('log_output'), padding="5")
-        log_frame.grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        log_frame.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
         
@@ -662,7 +693,7 @@ class MCUAutoBuildApp:
         # 状态栏
         self.status_var = tk.StringVar(value="就绪")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN)
-        status_bar.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E))
+        status_bar.grid(row=8, column=0, columnspan=3, sticky=(tk.W, tk.E))
     
     def log_message(self, message):
         """添加日志消息"""
@@ -708,14 +739,23 @@ class MCUAutoBuildApp:
                 self.log_message(f"选择项目路径: {directory}")
                 
                 # 更新配置
-                if 'project_settings' not in self.config:
-                    self.config['project_settings'] = {}
-                self.config['project_settings']['project_path'] = directory
+                self.config['project_path'] = directory
                 
                 # 重新初始化PathManager以使用新的项目路径
                 self.path_manager = PathManager(directory)
                 self.config = self.path_manager.auto_find_paths(self.config)
                 self.log_message("已重新搜索项目文件")
+                
+                # 自动获取flash偏移地址
+                flash_offset = self.path_manager.get_flash_offset_from_project()
+                if flash_offset:
+                    # 更新配置中的bin起始地址
+                    if 'binary_settings' not in self.config:
+                        self.config['binary_settings'] = {}
+                    self.config['binary_settings']['bin_start_address'] = flash_offset
+                    self.log_message(f"自动获取flash偏移地址: 0x{flash_offset:X}")
+                else:
+                    self.log_message("无法自动获取flash偏移地址，请手动设置")
                 
                 # 保存到配置文件
                 self.save_config()
@@ -756,21 +796,36 @@ class MCUAutoBuildApp:
                 self.config_analyzer = ConfigAnalyzer()
             
             # 分析配置文件
-            binary_config = self.config_analyzer.analyze_config_file(config_file_path)
+            feature_settings = {
+                'enable_git_commit_id': self.config.get('enable_git_commit_id', True),
+                'enable_file_size': self.config.get('enable_file_size', True),
+                'enable_bin_checksum': self.config.get('enable_bin_checksum', True),
+                'enable_hash_value': self.config.get('enable_hash_value', True),
+                'git_commit_id_keyword': self.config.get('git_commit_id_keyword', '__git_commit_id'),
+                'file_size_keyword': self.config.get('file_size_keyword', '__file_size'),
+                'bin_checksum_keyword': self.config.get('bin_checksum_keyword', '__bin_checksum'),
+                'hash_value_keyword': self.config.get('hash_value_keyword', '__hash_value'),
+                'firmware_version_keyword': self.config.get('firmware_version_keyword', '__Firmware_Version')
+            }
+            binary_config = self.config_analyzer.analyze_config_file(config_file_path, feature_settings)
+            self.log_message(f"ConfigAnalyzer分析结果: {binary_config}")
             
             # 更新配置
             if 'binary_settings' not in self.config:
-                self.config['binary_settings'] = {}
+                self.config = {}
             
             # 保存原有的bin_start_address
-            original_bin_start_address = self.config['binary_settings'].get('bin_start_address', 0)
+            binary_settings = self.config.get('binary_settings', {})
+            original_bin_start_address = binary_settings.get('bin_start_address', 0)
             
             # 更新地址相关配置
-            self.config['binary_settings'].update(binary_config)
-            self.config['binary_settings']['config_file'] = config_file_path
+            self.config.update(binary_config)
+            self.config['config_file'] = config_file_path
             
-            # 恢复bin_start_address
+            # 恢复bin_start_address到binary_settings
             if original_bin_start_address != 0:
+                if 'binary_settings' not in self.config:
+                    self.config['binary_settings'] = {}
                 self.config['binary_settings']['bin_start_address'] = original_bin_start_address
             
             # 验证配置
@@ -793,25 +848,24 @@ class MCUAutoBuildApp:
         try:
             # 创建用户配置
             user_config = {
-                "project_settings": {
-                    "iar_installation_path": self.config.get('project_settings', {}).get('iar_installation_path', ''),
+                "iar_installation_path": self.config.get('iar_installation_path', ''),
                     "project_path": self.project_path_var.get(),
-                    "fw_publish_directory": self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'),
-                    "info_file": self.config.get('project_settings', {}).get('info_file', '')
-                },
-                "binary_settings": {
-                    "bin_start_address": self.config.get('binary_settings', {}).get('bin_start_address', 0)
-                },
-                "ui_settings": {
-                    "language": self.current_language
-                }
+                "fw_publish_directory": self.config.get('fw_publish_directory', './fw_publish'),
+                "info_file": self.config.get('info_file', ''),
+                "language": self.current_language,
+                "enable_git_commit_id": self.config.get('enable_git_commit_id', True),
+                "enable_file_size": self.config.get('enable_file_size', True),
+                "enable_bin_checksum": self.config.get('enable_bin_checksum', True),
+                "git_commit_id_keyword": self.config.get('git_commit_id_keyword', '__git_commit_id'),
+                "file_size_keyword": self.config.get('file_size_keyword', '__file_size'),
+                "bin_checksum_keyword": self.config.get('bin_checksum_keyword', '__bin_checksum')
             }
             
             # 保存信息文件文件名（只存储文件名，不存储路径）
-            info_file_path = self.config.get('project_settings', {}).get('info_file', '')
+            info_file_path = self.config.get('info_file', '')
             if info_file_path:
                 info_file_name = os.path.basename(info_file_path)
-                user_config['project_settings']['info_file'] = info_file_name
+                user_config['info_file'] = info_file_name
             
             # 保存到用户配置文件
             with open("user_config.json", 'w', encoding='utf-8') as f:
@@ -840,10 +894,10 @@ class MCUAutoBuildApp:
                 self.config = self.path_manager.auto_find_paths(self.config)
                 
                 # 从IAR项目文件中提取项目名称
-                iar_project_path = self.config.get('project_settings', {}).get('iar_project_path')
+                iar_project_path = self.config.get('project_settings', {}).get('iar_project_path') or self.config.get('iar_project_path')
                 if iar_project_path and os.path.exists(iar_project_path):
                     project_name = os.path.splitext(os.path.basename(iar_project_path))[0]
-                    self.config['project_settings']['project_name'] = project_name
+                    self.config['project_name'] = project_name
                     self.log_message(f"检测到项目名称: {project_name}")
                 
                 # 检查是否为Git仓库
@@ -886,7 +940,7 @@ class MCUAutoBuildApp:
                 
                 # 初始化版本管理器和main.c更新器
                 project_path = self.project_path_var.get()
-                fw_publish_dir = self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish')
+                fw_publish_dir = self.config.get('fw_publish_directory', './fw_publish')
                 
                 # 获取当前git分支
                 current_branch = None
@@ -919,6 +973,9 @@ class MCUAutoBuildApp:
                     self.log_message("无法从main.c中提取版本号")
                     self.firmware_version_var.set("版本提取失败")
                 
+                # 更新flash起始地址显示
+                self._update_flash_start_addr_display()
+                
                 # 列出已发布的固件
                 published_firmware = self.version_manager.list_published_firmware()
                 if published_firmware:
@@ -944,25 +1001,28 @@ class MCUAutoBuildApp:
         self.log_message("开始检查编译配置...")
         
         # 检查IAR安装路径
-        iar_path = self.config.get('project_settings', {}).get('iar_installation_path', '')
+        iar_path = self.config.get('iar_installation_path', '')
         self.log_message(f"IAR路径: {iar_path}")
         if not iar_path:
             missing_configs.append("IAR安装路径")
         
         # 检查bin起始地址
-        bin_start_address = self.config.get('binary_settings', {}).get('bin_start_address', 0)
+        binary_settings = self.config.get('binary_settings', {})
+        self.log_message(f"binary_settings配置: {binary_settings}")
+        bin_start_address = binary_settings.get('bin_start_address', 0)
         self.log_message(f"检查bin起始地址: 0x{bin_start_address:08X}")
         if bin_start_address == 0:
             missing_configs.append("bin起始地址")
+            self.log_message("警告: bin起始地址未设置，这可能导致编译失败")
         
         # 检查信息文件
-        info_file_name = self.config.get('project_settings', {}).get('info_file', '')
+        info_file_name = self.config.get('info_file', '')
         self.log_message(f"信息文件名: {info_file_name}")
         if not info_file_name:
             missing_configs.append("信息文件")
         else:
             # 基于文件名查找完整路径
-            project_path = self.config.get('project_settings', {}).get('project_path', '')
+            project_path = self.config.get('project_path', '')
             self.log_message(f"项目路径: {project_path}")
             if not project_path:
                 missing_configs.append("项目路径")
@@ -978,11 +1038,22 @@ class MCUAutoBuildApp:
                         self.config_analyzer = ConfigAnalyzer()
                     
                     try:
-                        binary_config = self.config_analyzer.analyze_config_file(info_file_path)
+                        feature_settings = {
+                            'enable_git_commit_id': self.config.get('enable_git_commit_id', True),
+                            'enable_file_size': self.config.get('enable_file_size', True),
+                            'enable_bin_checksum': self.config.get('enable_bin_checksum', True),
+                            'enable_hash_value': self.config.get('enable_hash_value', True),
+                            'git_commit_id_keyword': self.config.get('git_commit_id_keyword', '__git_commit_id'),
+                            'file_size_keyword': self.config.get('file_size_keyword', '__file_size'),
+                            'bin_checksum_keyword': self.config.get('bin_checksum_keyword', '__bin_checksum'),
+                            'hash_value_keyword': self.config.get('hash_value_keyword', '__hash_value'),
+                            'firmware_version_keyword': self.config.get('firmware_version_keyword', '__Firmware_Version')
+                        }
+                        binary_config = self.config_analyzer.analyze_config_file(info_file_path, feature_settings)
                         # 更新配置
                         if 'binary_settings' not in self.config:
-                            self.config['binary_settings'] = {}
-                        self.config['binary_settings'].update(binary_config)
+                            self.config = {}
+                        self.config.update(binary_config)
                         
                         # 检查地址是否已解析
                         if (binary_config.get('firmware_version_offset', 0) == 0 or
@@ -1006,6 +1077,21 @@ class MCUAutoBuildApp:
         
         return True
     
+    def _update_flash_start_addr_display(self):
+        """更新flash起始地址显示"""
+        try:
+            # 从配置中获取flash起始地址
+            bin_start_address = self.config.get('binary_settings', {}).get('bin_start_address', 0)
+            if bin_start_address > 0:
+                self.flash_start_addr_var.set(f"0x{bin_start_address:08X}")
+                self.log_message(f"Flash起始地址: 0x{bin_start_address:08X}")
+            else:
+                self.flash_start_addr_var.set("未设置")
+                self.log_message("Flash起始地址未设置")
+        except Exception as e:
+            self.flash_start_addr_var.set("获取失败")
+            self.log_message(f"获取Flash起始地址失败: {e}")
+    
     def _find_info_file(self, project_path: str) -> Optional[str]:
         """
         查找信息文件（支持多种扩展名：.c, .cpp, .cc, .h, .hpp）
@@ -1017,7 +1103,7 @@ class MCUAutoBuildApp:
             str: 信息文件相对路径，未找到返回None
         """
         # 首先尝试使用保存的信息文件名
-        saved_info_file = self.config.get('project_settings', {}).get('info_file', '')
+        saved_info_file = self.config.get('info_file', '')
         if saved_info_file:
             # 在项目路径中搜索该文件
             search_paths = ['', 'app', 'src', 'source', 'inc', 'include']
@@ -1122,11 +1208,14 @@ class MCUAutoBuildApp:
                 self.path_manager = PathManager(project_path)
                 self.config = self.path_manager.auto_find_paths(self.config)
                 
+                # 更新flash起始地址显示
+                self._update_flash_start_addr_display()
+                
                 # 从IAR项目文件中提取项目名称
-                iar_project_path = self.config.get('project_settings', {}).get('iar_project_path')
+                iar_project_path = self.config.get('project_settings', {}).get('iar_project_path') or self.config.get('iar_project_path')
                 if iar_project_path and os.path.exists(iar_project_path):
                     project_name = os.path.splitext(os.path.basename(iar_project_path))[0]
-                    self.config['project_settings']['project_name'] = project_name
+                    self.config['project_name'] = project_name
                     self.log_message(f"检测到项目名称: {project_name}")
                 
                 if not self.git_manager.is_git_repo():
@@ -1134,7 +1223,7 @@ class MCUAutoBuildApp:
                     return
                 
                 # 2. 获取版本信息并自动更新
-                fw_publish_dir = self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish')
+                fw_publish_dir = self.config.get('fw_publish_directory', './fw_publish')
                 
                 # 获取当前git分支
                 current_branch = None
@@ -1244,7 +1333,7 @@ class MCUAutoBuildApp:
                 self.log_message(f"使用commit ID: {commit_id}")
                 
                 # 9. 初始化IAR编译器
-                self.iar_builder = IARBuilder(self.config['project_settings'])
+                self.iar_builder = IARBuilder(self.config)
                 
                 # 10. 智能编译项目
                 self.update_status("编译项目中...")
@@ -1272,7 +1361,18 @@ class MCUAutoBuildApp:
                 
                 # 11. 修改二进制文件
                 self.update_status("修改二进制文件...")
-                self.binary_modifier = BinaryModifier(self.config['binary_settings'])
+                feature_settings = {
+                    'enable_git_commit_id': self.config.get('enable_git_commit_id', True),
+                    'enable_file_size': self.config.get('enable_file_size', True),
+                    'enable_bin_checksum': self.config.get('enable_bin_checksum', True),
+                    'enable_hash_value': self.config.get('enable_hash_value', True),
+                    'git_commit_id_keyword': self.config.get('git_commit_id_keyword', '__git_commit_id'),
+                    'file_size_keyword': self.config.get('file_size_keyword', '__file_size'),
+                    'bin_checksum_keyword': self.config.get('bin_checksum_keyword', '__bin_checksum'),
+                    'hash_value_keyword': self.config.get('hash_value_keyword', '__hash_value'),
+                    'firmware_version_keyword': self.config.get('firmware_version_keyword', '__Firmware_Version')
+                }
+                self.binary_modifier = BinaryModifier(self.config, feature_settings)
                 
                 # 记录二进制文件信息
                 self.log_message(f"准备修改二进制文件: {bin_info['path']}")
@@ -1297,7 +1397,7 @@ class MCUAutoBuildApp:
                 
                 # 12. 处理文件
                 self.update_status("处理输出文件...")
-                self.file_manager = FileManager(self.config['project_settings'], project_path)
+                self.file_manager = FileManager(self.config, project_path)
                 
                 success, message, file_info = self.file_manager.process_bin_file(
                     bin_info['path'], commit_id, version=next_version)
@@ -1323,8 +1423,8 @@ class MCUAutoBuildApp:
                     self.log_message(f"发布详情: {message}")
                     
                     # 14. 发布到远程目录（如果启用了）
-                    enable_remote_publish = self.config['project_settings'].get('enable_remote_publish', False)
-                    remote_publish_dir = self.config['project_settings'].get('remote_publish_directory', '').strip()
+                    enable_remote_publish = self.config.get('enable_remote_publish', False)
+                    remote_publish_dir = self.config.get('remote_publish_directory', '').strip()
                     self.log_message(f"检查远程发布配置: 启用={enable_remote_publish}, 目录='{remote_publish_dir}'")
                     
                     if enable_remote_publish and remote_publish_dir:
@@ -1393,7 +1493,7 @@ class MCUAutoBuildApp:
     def open_firmware_directory(self):
         """打开固件发布目录"""
         try:
-            fw_publish_dir = self.config['project_settings'].get('fw_publish_directory', './fw_publish')
+            fw_publish_dir = self.config.get('fw_publish_directory', './fw_publish')
             if os.path.exists(fw_publish_dir):
                 os.startfile(fw_publish_dir)
             else:
@@ -1416,75 +1516,121 @@ class MCUAutoBuildApp:
         self._center_settings_dialog(settings_window)
         
         # 创建主框架
-        main_frame = ttk.Frame(settings_window, padding="10")
+        main_frame = ttk.Frame(settings_window, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # 语言设置部分
-        language_group = ttk.LabelFrame(main_frame, text=self.get_text('language'), padding="10")
-        language_group.pack(fill=tk.X, pady=(0, 10))
-        
-        # 语言选择
-        ttk.Label(language_group, text=self.get_text('language')).grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.settings_language_var = tk.StringVar(value=self.current_language)
-        language_combo = ttk.Combobox(language_group, textvariable=self.settings_language_var, 
-                                    values=list(LANGUAGES.keys()), state="readonly", width=20)
-        language_combo.grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
-        language_combo.bind('<<ComboboxSelected>>', lambda e: self.on_language_changed(settings_window))
-        
-        # 项目设置部分
-        project_group = ttk.LabelFrame(main_frame, text=self.get_text('project_settings'), padding="10")
-        project_group.pack(fill=tk.X, pady=(0, 10))
+        # 设置项列表
+        row = 0
         
         # IAR安装路径
-        ttk.Label(project_group, text=self.get_text('iar_installation_path')).grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.settings_iar_path_var = tk.StringVar(value=self.config.get('project_settings', {}).get('iar_installation_path', ''))
-        ttk.Entry(project_group, textvariable=self.settings_iar_path_var, state="readonly", width=35).grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
-        ttk.Button(project_group, text=self.get_text('select_directory'), command=self.browse_iar_path_settings).grid(row=0, column=2, sticky=tk.W, padx=(10, 0), pady=5)
-        
+        ttk.Label(main_frame, text=self.get_text('iar_installation_path')).grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_iar_path_var = tk.StringVar(value=self.config.get('iar_installation_path', ''))
+        ttk.Entry(main_frame, textvariable=self.settings_iar_path_var, state="readonly", width=35).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Button(main_frame, text=self.get_text('select_directory'), command=self.browse_iar_path_settings).grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
         
         # 固件发布目录
-        ttk.Label(project_group, text=self.get_text('fw_publish_directory')).grid(row=2, column=0, sticky=tk.W, pady=5)
-        self.settings_fw_publish_dir_var = tk.StringVar(value=self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'))
-        ttk.Entry(project_group, textvariable=self.settings_fw_publish_dir_var, width=35).grid(row=2, column=1, sticky=tk.W, padx=(10, 0), pady=5)
-        ttk.Button(project_group, text=self.get_text('select_directory'), command=self.browse_fw_publish_dir_settings).grid(row=2, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Label(main_frame, text=self.get_text('fw_publish_directory')).grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_fw_publish_dir_var = tk.StringVar(value=self.config.get('fw_publish_directory', './fw_publish'))
+        ttk.Entry(main_frame, textvariable=self.settings_fw_publish_dir_var, width=35).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Button(main_frame, text=self.get_text('select_directory'), command=self.browse_fw_publish_dir_settings).grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
         
         # 远程发布开关
-        self.settings_enable_remote_publish_var = tk.BooleanVar(value=self.config.get('project_settings', {}).get('enable_remote_publish', False))
-        ttk.Checkbutton(project_group, text=self.get_text('enable_remote_publish'), variable=self.settings_enable_remote_publish_var, command=self.on_remote_publish_toggle).grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=5)
+        self.settings_enable_remote_publish_var = tk.BooleanVar(value=self.config.get('enable_remote_publish', False))
+        ttk.Checkbutton(main_frame, text=self.get_text('enable_remote_publish'), variable=self.settings_enable_remote_publish_var, command=self.on_remote_publish_toggle).grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=5)
+        row += 1
         
         # 远程发布目录
-        ttk.Label(project_group, text=self.get_text('remote_publish_directory')).grid(row=4, column=0, sticky=tk.W, pady=5)
-        self.settings_remote_publish_dir_var = tk.StringVar(value=self.config.get('project_settings', {}).get('remote_publish_directory', ''))
-        self.settings_remote_publish_dir_entry = ttk.Entry(project_group, textvariable=self.settings_remote_publish_dir_var, width=35)
-        self.settings_remote_publish_dir_entry.grid(row=4, column=1, sticky=tk.W, padx=(10, 0), pady=5)
-        self.settings_remote_publish_dir_button = ttk.Button(project_group, text=self.get_text('select_directory'), command=self.browse_remote_publish_dir_settings)
-        self.settings_remote_publish_dir_button.grid(row=4, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Label(main_frame, text=self.get_text('remote_publish_directory')).grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_remote_publish_dir_var = tk.StringVar(value=self.config.get('remote_publish_directory', ''))
+        self.settings_remote_publish_dir_entry = ttk.Entry(main_frame, textvariable=self.settings_remote_publish_dir_var, width=35)
+        self.settings_remote_publish_dir_entry.grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        self.settings_remote_publish_dir_button = ttk.Button(main_frame, text=self.get_text('select_directory'), command=self.browse_remote_publish_dir_settings)
+        self.settings_remote_publish_dir_button.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
         
         # 初始化远程发布目录控件的状态
         self.update_remote_publish_controls_state()
         
-        # 二进制设置部分
-        binary_group = ttk.LabelFrame(main_frame, text=self.get_text('binary_settings'), padding="10")
-        binary_group.pack(fill=tk.X, pady=(0, 10))
-        
-        # bin起始地址配置
-        ttk.Label(binary_group, text=self.get_text('bin_start_address')).grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.settings_bin_start_address_var = tk.StringVar(value=f"0x{self.config.get('binary_settings', {}).get('bin_start_address', 0):X}")
-        ttk.Entry(binary_group, textvariable=self.settings_bin_start_address_var, width=20).grid(row=0, column=1, sticky=tk.W, padx=(10, 0), pady=5)
-        ttk.Label(binary_group, text=self.get_text('example_bin_address'), foreground="gray").grid(row=0, column=2, sticky=tk.W, padx=(10, 0), pady=5)
-        
         # 配置文件路径
-        ttk.Label(binary_group, text=self.get_text('config_file')).grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.settings_config_file_var = tk.StringVar(value=self.config.get('project_settings', {}).get('info_file', ''))
-        ttk.Entry(binary_group, textvariable=self.settings_config_file_var, state="readonly", width=35).grid(row=1, column=1, sticky=tk.W, padx=(10, 0), pady=5)
-        ttk.Button(binary_group, text=self.get_text('select'), command=self.browse_config_file_settings).grid(row=1, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Label(main_frame, text=self.get_text('config_file')).grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_config_file_var = tk.StringVar(value=self.config.get('info_file', ''))
+        ttk.Entry(main_frame, textvariable=self.settings_config_file_var, state="readonly", width=35).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        ttk.Button(main_frame, text=self.get_text('select'), command=self.browse_config_file_settings).grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
         
-        # 按钮框架
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(20, 0))
+        # 固件版本变量名称（永远开启，放在最前面）
+        ttk.Label(main_frame, text=self.get_text('firmware_version_keyword')).grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_firmware_version_keyword_var = tk.StringVar(value=self.config.get('firmware_version_keyword', '__Firmware_Version'))
+        ttk.Entry(main_frame, textvariable=self.settings_firmware_version_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
         
-        ttk.Button(button_frame, text=self.get_text('save'), command=lambda: self.save_settings(settings_window)).pack(side=tk.RIGHT, padx=(5, 0))
-        ttk.Button(button_frame, text=self.get_text('cancel'), command=settings_window.destroy).pack(side=tk.RIGHT)
+        # Git提交ID变量名称
+        ttk.Label(main_frame, text="Git提交ID变量名称:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_git_commit_id_keyword_var = tk.StringVar(value=self.config.get('git_commit_id_keyword', '__git_commit_id'))
+        ttk.Entry(main_frame, textvariable=self.settings_git_commit_id_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        self.settings_enable_git_commit_id_var = tk.BooleanVar(value=self.config.get('enable_git_commit_id', True))
+        self.git_commit_id_checkbox = ttk.Checkbutton(main_frame, text="启用", variable=self.settings_enable_git_commit_id_var, command=lambda: self.update_checkbox_text(self.git_commit_id_checkbox, self.settings_enable_git_commit_id_var))
+        self.git_commit_id_checkbox.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
+        
+        # 文件大小变量名称
+        ttk.Label(main_frame, text="文件大小变量名称:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_file_size_keyword_var = tk.StringVar(value=self.config.get('file_size_keyword', '__file_size'))
+        ttk.Entry(main_frame, textvariable=self.settings_file_size_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        self.settings_enable_file_size_var = tk.BooleanVar(value=self.config.get('enable_file_size', True))
+        self.file_size_checkbox = ttk.Checkbutton(main_frame, text="启用", variable=self.settings_enable_file_size_var, command=lambda: self.update_checkbox_text(self.file_size_checkbox, self.settings_enable_file_size_var))
+        self.file_size_checkbox.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
+        
+        # 二进制校验和变量名称
+        ttk.Label(main_frame, text="二进制校验和变量名称:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_bin_checksum_keyword_var = tk.StringVar(value=self.config.get('bin_checksum_keyword', '__bin_checksum'))
+        ttk.Entry(main_frame, textvariable=self.settings_bin_checksum_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        self.settings_enable_bin_checksum_var = tk.BooleanVar(value=self.config.get('enable_bin_checksum', True))
+        self.bin_checksum_checkbox = ttk.Checkbutton(main_frame, text="启用", variable=self.settings_enable_bin_checksum_var, command=lambda: self.update_checkbox_text(self.bin_checksum_checkbox, self.settings_enable_bin_checksum_var))
+        self.bin_checksum_checkbox.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
+        
+        # 哈希校验和功能开关和变量名称
+        ttk.Label(main_frame, text="哈希校验和变量名称:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_hash_value_keyword_var = tk.StringVar(value=self.config.get('hash_value_keyword', '__hash_value'))
+        ttk.Entry(main_frame, textvariable=self.settings_hash_value_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        self.settings_enable_hash_value_var = tk.BooleanVar(value=self.config.get('enable_hash_value', True))
+        self.hash_value_checkbox = ttk.Checkbutton(main_frame, text="启用", variable=self.settings_enable_hash_value_var, command=lambda: self.update_checkbox_text(self.hash_value_checkbox, self.settings_enable_hash_value_var))
+        self.hash_value_checkbox.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
+        row += 1
+        
+        # 说明文本
+        ttk.Label(main_frame, text="注意：bin起始地址现在从ICF文件自动获取，无需手动配置", foreground="gray").grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        row += 1
+        
+        # 语言设置单独一行
+        ttk.Label(main_frame, text=self.get_text('language')).grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.settings_language_var = tk.StringVar(value=self.current_language)
+        language_combo = ttk.Combobox(main_frame, textvariable=self.settings_language_var, 
+                                    values=list(LANGUAGES.keys()), state="readonly", width=15)
+        language_combo.grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
+        language_combo.bind('<<ComboboxSelected>>', lambda e: self.on_language_changed(settings_window))
+        row += 1
+        
+        # 取消和保存按钮单独一行（取消在列1右对齐，保存在列2，与上面的选择按钮对齐）
+        ttk.Button(main_frame, text=self.get_text('cancel'), command=settings_window.destroy).grid(row=row, column=1, sticky=tk.E, padx=(10, 0), pady=5)
+        ttk.Button(main_frame, text=self.get_text('save'), command=lambda: self.save_settings(settings_window)).grid(row=row, column=2, sticky=tk.W, padx=(5, 0), pady=5)
+        
+        # 初始化勾选框文本
+        self.update_checkbox_text(self.git_commit_id_checkbox, self.settings_enable_git_commit_id_var)
+        self.update_checkbox_text(self.file_size_checkbox, self.settings_enable_file_size_var)
+        self.update_checkbox_text(self.bin_checksum_checkbox, self.settings_enable_bin_checksum_var)
+        self.update_checkbox_text(self.hash_value_checkbox, self.settings_enable_hash_value_var)
+    
+    def update_checkbox_text(self, checkbox, var):
+        """更新勾选框的文本显示"""
+        if var.get():
+            checkbox.config(text="启用")
+        else:
+            checkbox.config(text="未启用")
     
     def on_language_changed(self, settings_window):
         """语言切换回调函数"""
@@ -1525,7 +1671,7 @@ class MCUAutoBuildApp:
                 initial_dir = os.path.dirname(current_config)
             else:
                 # 尝试从项目路径开始查找
-                project_path = self.config.get('project_settings', {}).get('project_path', '')
+                project_path = self.config.get('project_path', '')
                 initial_dir = project_path if project_path and os.path.exists(project_path) else os.path.dirname(os.path.abspath(__file__))
             
             self.log_message(f"配置文件对话框初始目录: {initial_dir}")
@@ -1600,6 +1746,27 @@ class MCUAutoBuildApp:
         if directory:
             self.settings_remote_publish_dir_var.set(directory)
     
+    def auto_get_flash_address(self):
+        """自动获取flash偏移地址"""
+        try:
+            self.log_message("正在从IAR项目文件自动获取flash偏移地址...")
+            
+            # 使用PathManager获取flash偏移地址
+            flash_offset = self.path_manager.get_flash_offset_from_project()
+            
+            if flash_offset:
+                # 更新界面显示
+                self.settings_bin_start_address_var.set(f"0x{flash_offset:X}")
+                self.log_message(f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
+                messagebox.showinfo(self.get_text('msg_success'), f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
+            else:
+                self.log_message("自动获取flash偏移地址失败")
+                messagebox.showwarning(self.get_text('msg_warning'), "无法自动获取flash偏移地址，请检查IAR项目文件和ICF文件")
+                
+        except Exception as e:
+            self.log_message(f"自动获取flash偏移地址异常: {e}")
+            messagebox.showerror(self.get_text('msg_error'), f"自动获取flash偏移地址失败: {e}")
+    
     def on_remote_publish_toggle(self):
         """远程发布开关切换事件"""
         self.update_remote_publish_controls_state()
@@ -1616,24 +1783,21 @@ class MCUAutoBuildApp:
         """保存设置"""
         try:
             # 更新配置
-            if 'binary_settings' not in self.config:
-                self.config['binary_settings'] = {}
-            if 'project_settings' not in self.config:
-                self.config['project_settings'] = {}
+            self.config['iar_installation_path'] = self.settings_iar_path_var.get()
+            self.config['fw_publish_directory'] = self.settings_fw_publish_dir_var.get()
+            self.config['remote_publish_directory'] = self.settings_remote_publish_dir_var.get()
+            self.config['enable_remote_publish'] = self.settings_enable_remote_publish_var.get()
             
-            # 解析bin起始地址
-            bin_start_address_str = self.settings_bin_start_address_var.get().strip()
-            if bin_start_address_str.startswith('0x') or bin_start_address_str.startswith('0X'):
-                bin_start_address = int(bin_start_address_str, 16)
-            else:
-                bin_start_address = int(bin_start_address_str)
-            
-            # 更新配置
-            self.config['binary_settings']['bin_start_address'] = bin_start_address
-            self.config['project_settings']['iar_installation_path'] = self.settings_iar_path_var.get()
-            self.config['project_settings']['fw_publish_directory'] = self.settings_fw_publish_dir_var.get()
-            self.config['project_settings']['remote_publish_directory'] = self.settings_remote_publish_dir_var.get()
-            self.config['project_settings']['enable_remote_publish'] = self.settings_enable_remote_publish_var.get()
+            # 更新功能设置
+            self.config['enable_git_commit_id'] = self.settings_enable_git_commit_id_var.get()
+            self.config['enable_file_size'] = self.settings_enable_file_size_var.get()
+            self.config['enable_bin_checksum'] = self.settings_enable_bin_checksum_var.get()
+            self.config['enable_hash_value'] = self.settings_enable_hash_value_var.get()
+            self.config['git_commit_id_keyword'] = self.settings_git_commit_id_keyword_var.get()
+            self.config['file_size_keyword'] = self.settings_file_size_keyword_var.get()
+            self.config['bin_checksum_keyword'] = self.settings_bin_checksum_keyword_var.get()
+            self.config['hash_value_keyword'] = self.settings_hash_value_keyword_var.get()
+            self.config['firmware_version_keyword'] = self.settings_firmware_version_keyword_var.get()
             
             # 保存语言设置到user_config.json
             if hasattr(self, 'settings_language_var'):
@@ -1643,24 +1807,26 @@ class MCUAutoBuildApp:
             info_file_path = self.settings_config_file_var.get()
             if info_file_path:
                 info_file_name = os.path.basename(info_file_path)
-                self.config['project_settings']['info_file'] = info_file_name
+                self.config['info_file'] = info_file_name
             
             # 创建用户配置
             user_config = {
-                "project_settings": {
-                    "iar_installation_path": self.config.get('project_settings', {}).get('iar_installation_path', ''),
-                    "project_path": self.config.get('project_settings', {}).get('project_path', ''),
-                    "fw_publish_directory": self.config.get('project_settings', {}).get('fw_publish_directory', './fw_publish'),
-                    "remote_publish_directory": self.config.get('project_settings', {}).get('remote_publish_directory', ''),
-                    "enable_remote_publish": self.config.get('project_settings', {}).get('enable_remote_publish', False),
-                    "info_file": self.config.get('project_settings', {}).get('info_file', '')
-                },
-                "binary_settings": {
-                    "bin_start_address": self.config.get('binary_settings', {}).get('bin_start_address', 0)
-                },
-                "ui_settings": {
-                    "language": self.current_language
-                }
+                "iar_installation_path": self.config.get('iar_installation_path', ''),
+                "project_path": self.config.get('project_path', ''),
+                "fw_publish_directory": self.config.get('fw_publish_directory', './fw_publish'),
+                "remote_publish_directory": self.config.get('remote_publish_directory', ''),
+                "enable_remote_publish": self.config.get('enable_remote_publish', False),
+                "info_file": self.config.get('info_file', ''),
+                "language": self.current_language,
+                "enable_git_commit_id": self.config.get('enable_git_commit_id', True),
+                "enable_file_size": self.config.get('enable_file_size', True),
+                "enable_bin_checksum": self.config.get('enable_bin_checksum', True),
+                "enable_hash_value": self.config.get('enable_hash_value', True),
+                "git_commit_id_keyword": self.config.get('git_commit_id_keyword', '__git_commit_id'),
+                "file_size_keyword": self.config.get('file_size_keyword', '__file_size'),
+                "bin_checksum_keyword": self.config.get('bin_checksum_keyword', '__bin_checksum'),
+                "hash_value_keyword": self.config.get('hash_value_keyword', '__hash_value'),
+                "firmware_version_keyword": self.config.get('firmware_version_keyword', '__Firmware_Version')
             }
             
             # 保存到用户配置文件
@@ -1668,20 +1834,18 @@ class MCUAutoBuildApp:
                 json.dump(user_config, f, indent=4, ensure_ascii=False)
             
             # 更新主界面的IAR路径显示
-            iar_path = self.config.get('project_settings', {}).get('iar_installation_path', '')
+            iar_path = self.config.get('iar_installation_path', '')
             if iar_path:
                 self.iar_path_display_var.set(iar_path)
             else:
                 self.iar_path_display_var.set("未配置")
             
-            self.log_message(f"设置已保存: bin起始地址=0x{bin_start_address:08X}")
+            self.log_message("设置已保存")
             messagebox.showinfo(self.get_text('msg_settings_saved'), self.get_text('msg_settings_saved'))
             settings_window.destroy()
             
-        except ValueError as e:
-            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_bin_address_format_error')}: {e}")
         except Exception as e:
-            messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_save_settings_failed')}: {e}")
+            messagebox.showerror(self.get_text('msg_error'), f"保存设置失败: {e}")
     
     def show_git_commit_dialog(self, default_message: str = "") -> str:
         """

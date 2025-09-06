@@ -10,6 +10,7 @@ import glob
 import logging
 from typing import Optional, List, Tuple
 from pathlib import Path
+from iar_project_analyzer import IARProjectAnalyzer
 
 
 class PathManager:
@@ -24,6 +25,7 @@ class PathManager:
         """
         self.project_path = os.path.abspath(project_path) if project_path else os.getcwd()
         self.logger = logging.getLogger(__name__)
+        self.iar_analyzer = IARProjectAnalyzer()
         
         self.logger.info(f"项目根目录: {self.project_path}")
     
@@ -275,6 +277,7 @@ class PathManager:
             workspace_path = self.find_iar_workspace()
             if workspace_path:
                 project_settings['iar_workspace_path'] = workspace_path
+                updated_config['iar_workspace_path'] = workspace_path  # 同时更新根级别
                 self.logger.info(f"自动找到IAR工作区文件: {workspace_path}")
         
         # 查找IAR项目文件
@@ -283,6 +286,7 @@ class PathManager:
             project_path = self.find_iar_project()
             if project_path:
                 project_settings['iar_project_path'] = project_path
+                updated_config['iar_project_path'] = project_path  # 同时更新根级别
                 self.logger.info(f"自动找到IAR项目文件: {project_path}")
         
         # 查找bin文件
@@ -296,7 +300,33 @@ class PathManager:
             bin_path = self.find_bin_file(project_name)
             if bin_path:
                 project_settings['output_bin_path'] = bin_path
+                updated_config['output_bin_path'] = bin_path  # 同时更新根级别
                 self.logger.info(f"自动找到bin文件: {bin_path}")
+        
+        # 自动获取flash偏移地址
+        if 'binary_settings' not in updated_config:
+            updated_config['binary_settings'] = {}
+        
+        current_bin_start = updated_config['binary_settings'].get('bin_start_address', 0)
+        self.logger.info(f"当前bin_start_address: 0x{current_bin_start:X}")
+        if current_bin_start == 0:
+            self.logger.info("尝试自动获取flash偏移地址...")
+            flash_offset = self.get_flash_offset_from_project()
+            if flash_offset:
+                updated_config['binary_settings']['bin_start_address'] = flash_offset
+                self.logger.info(f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
+            else:
+                # 如果无法自动获取，设置一个默认值（STM32的常见起始地址）
+                default_flash_offset = 0x08000000
+                updated_config['binary_settings']['bin_start_address'] = default_flash_offset
+                self.logger.warning(f"无法自动获取flash偏移地址，使用默认值: 0x{default_flash_offset:X}")
+                self.logger.warning("请检查IAR项目文件是否正确配置，或手动设置正确的起始地址")
+        else:
+            self.logger.info(f"使用已配置的bin_start_address: 0x{current_bin_start:X}")
+        
+        # 验证最终配置
+        final_bin_start = updated_config['binary_settings'].get('bin_start_address', 0)
+        self.logger.info(f"最终bin_start_address配置: 0x{final_bin_start:X}")
         
         return updated_config
     
@@ -351,6 +381,33 @@ class PathManager:
                 return project_name
             except:
                 return None
+    
+    def get_flash_offset_from_project(self) -> Optional[int]:
+        """
+        从IAR项目文件中自动获取flash偏移地址
+        
+        Returns:
+            int: flash偏移地址，失败返回None
+        """
+        try:
+            # 查找IAR项目文件
+            ewp_file = self.find_iar_project()
+            if not ewp_file:
+                self.logger.warning("未找到IAR项目文件，无法自动获取flash偏移地址")
+                return None
+            
+            # 使用IAR项目分析器获取flash偏移地址
+            flash_offset = self.iar_analyzer.get_flash_offset_from_project(ewp_file)
+            if flash_offset:
+                self.logger.info(f"从IAR项目文件自动获取flash偏移地址: 0x{flash_offset:X}")
+                return flash_offset
+            else:
+                self.logger.warning("无法从IAR项目文件获取flash偏移地址")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"获取flash偏移地址失败: {e}")
+            return None
 
 
 def test_path_manager():

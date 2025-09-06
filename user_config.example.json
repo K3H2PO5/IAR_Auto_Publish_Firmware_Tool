@@ -1,16 +1,18 @@
 {
-    "project_settings": {
-        "iar_installation_path": "C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3",
-        "project_path": "E:/YourProject",
-        "fw_publish_directory": "./fw_publish",
-        "remote_publish_directory": "",
-        "enable_remote_publish": false,
-        "info_file": "main.c"
-    },
-    "binary_settings": {
-        "bin_start_address": 134217728
-    },
-    "ui_settings": {
-        "language": "zh_CN"
-    }
+    "iar_installation_path": "C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3",
+    "project_path": "E:/YourProject",
+    "fw_publish_directory": "./fw_publish",
+    "remote_publish_directory": "",
+    "enable_remote_publish": false,
+    "info_file": "main.c",
+    "language": "zh_CN",
+    "enable_git_commit_id": true,
+    "enable_file_size": true,
+    "enable_bin_checksum": true,
+    "git_commit_id_keyword": "__git_commit_id",
+    "file_size_keyword": "__file_size",
+    "bin_checksum_keyword": "__bin_checksum",
+    "firmware_version_keyword": "__Firmware_Version",
+    "enable_hash_value": true,
+    "hash_value_keyword": "__hash_value"
 }

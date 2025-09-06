@@ -28,16 +28,28 @@ class IARBuilder:
         
         # 从配置中获取路径
         iar_installation_path = config.get('iar_installation_path', '')
+        self.logger.info(f"配置中的IAR安装路径: {iar_installation_path}")
         self.iar_exe_path = self._find_iar_executable(iar_installation_path)
-        self.workspace_path = config.get('iar_workspace_path', '')
-        self.project_path = config.get('iar_project_path', '')
-        self.output_bin_path = config.get('output_bin_path', '')
+        self.logger.info(f"最终IAR可执行文件路径: {self.iar_exe_path}")
+        
+        # 从project_settings中获取IAR相关路径，如果没有则从根级别获取
+        project_settings = config.get('project_settings', {})
+        self.workspace_path = project_settings.get('iar_workspace_path', '') or config.get('iar_workspace_path', '')
+        self.project_path = project_settings.get('iar_project_path', '') or config.get('iar_project_path', '')
+        self.output_bin_path = project_settings.get('output_bin_path', '') or config.get('output_bin_path', '')
         self.build_config = config.get('build_configuration', 'Debug')
         self.clean_before_build = config.get('clean_before_build', False)  # 默认使用增量编译
         self.timeout_seconds = config.get('timeout_seconds', 300)
         
         # 验证路径
+        self.logger.info(f"IAR可执行文件: {self.iar_exe_path}")
+        self.logger.info(f"IAR工作区文件: {self.workspace_path}")
+        self.logger.info(f"IAR项目文件: {self.project_path}")
+        self.logger.info(f"输出bin文件: {self.output_bin_path}")
         self._validate_paths()
+        self._check_permissions()
+        self.diagnose_environment()
+        self.test_iar_command()
     
     def _find_iar_executable(self, iar_dir: str) -> str:
         """
@@ -60,17 +72,23 @@ class IARBuilder:
             os.path.join(iar_dir, "common", "bin", "IarBuild.exe")
         ]
         
-        for path in possible_paths:
-            if os.path.exists(path):
+        self.logger.info(f"搜索IAR可执行文件，尝试以下路径:")
+        for i, path in enumerate(possible_paths, 1):
+            exists = os.path.exists(path)
+            self.logger.info(f"  {i}. {path} - {'存在' if exists else '不存在'}")
+            if exists:
                 self.logger.info(f"找到IAR可执行文件: {path}")
                 return path
         
-        # 如果没找到，返回原始路径（可能是直接指定的exe路径）
+        # 如果没找到，检查是否是直接指定的exe路径
         if iar_dir.endswith('.exe') and os.path.exists(iar_dir):
             return iar_dir
         
+        # 如果都没找到，返回默认路径
+        default_path = 'C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3/common/bin/IarBuild.exe'
         self.logger.warning(f"在IAR目录中未找到IarBuild.exe: {iar_dir}")
-        return iar_dir
+        self.logger.warning(f"使用默认路径: {default_path}")
+        return default_path
     
     def _validate_paths(self):
         """验证IAR相关路径是否存在"""
@@ -85,6 +103,122 @@ class IARBuilder:
         # 检查项目文件
         if self.project_path and not os.path.exists(self.project_path):
             self.logger.warning(f"IAR项目文件不存在: {self.project_path}")
+    
+    def _check_permissions(self):
+        """检查权限"""
+        try:
+            # 检查IAR可执行文件权限
+            if os.path.exists(self.iar_exe_path):
+                if not os.access(self.iar_exe_path, os.X_OK):
+                    self.logger.warning(f"IAR可执行文件没有执行权限: {self.iar_exe_path}")
+            
+            # 检查项目目录权限
+            if self.project_path and os.path.exists(self.project_path):
+                project_dir = os.path.dirname(self.project_path)
+                if not os.access(project_dir, os.W_OK):
+                    self.logger.warning(f"项目目录没有写权限: {project_dir}")
+            
+            # 检查输出目录权限
+            if self.output_bin_path and os.path.exists(os.path.dirname(self.output_bin_path)):
+                output_dir = os.path.dirname(self.output_bin_path)
+                if not os.access(output_dir, os.W_OK):
+                    self.logger.warning(f"输出目录没有写权限: {output_dir}")
+                    
+        except Exception as e:
+            self.logger.warning(f"权限检查失败: {e}")
+    
+    def diagnose_environment(self):
+        """诊断运行环境，特别针对打包exe的情况"""
+        self.logger.info("=== 环境诊断开始 ===")
+        
+        # 检查是否在打包环境中运行
+        import sys
+        if getattr(sys, 'frozen', False):
+            self.logger.info("运行环境: 打包exe")
+            self.logger.info(f"exe路径: {sys.executable}")
+        else:
+            self.logger.info("运行环境: Python脚本")
+            self.logger.info(f"Python路径: {sys.executable}")
+        
+        # 检查当前工作目录
+        import os
+        self.logger.info(f"当前工作目录: {os.getcwd()}")
+        
+        # 检查环境变量
+        self.logger.info(f"PATH环境变量: {os.environ.get('PATH', '')[:200]}...")
+        
+        # 检查IAR相关路径
+        self.logger.info(f"IAR可执行文件路径: {self.iar_exe_path}")
+        self.logger.info(f"IAR可执行文件存在: {os.path.exists(self.iar_exe_path)}")
+        if os.path.exists(self.iar_exe_path):
+            stat = os.stat(self.iar_exe_path)
+            self.logger.info(f"IAR可执行文件大小: {stat.st_size} 字节")
+            self.logger.info(f"IAR可执行文件权限: {oct(stat.st_mode)}")
+        
+        self.logger.info(f"项目文件路径: {self.project_path}")
+        self.logger.info(f"项目文件存在: {os.path.exists(self.project_path)}")
+        
+        # 检查项目目录权限
+        if self.project_path and os.path.exists(self.project_path):
+            project_dir = os.path.dirname(self.project_path)
+            self.logger.info(f"项目目录: {project_dir}")
+            self.logger.info(f"项目目录存在: {os.path.exists(project_dir)}")
+            self.logger.info(f"项目目录可写: {os.access(project_dir, os.W_OK)}")
+            self.logger.info(f"项目目录可读: {os.access(project_dir, os.R_OK)}")
+            self.logger.info(f"项目目录可执行: {os.access(project_dir, os.X_OK)}")
+        
+        self.logger.info("=== 环境诊断结束 ===")
+    
+    def test_iar_command(self) -> bool:
+        """测试IAR命令是否能正常执行"""
+        try:
+            self.logger.info("测试IAR命令执行...")
+            # 简单的测试命令
+            test_cmd = [self.iar_exe_path, "-?"]
+            
+            # 尝试不同的调用方式
+            for use_shell in [False, True]:
+                try:
+                    self.logger.info(f"尝试执行IAR测试命令 (shell={use_shell})...")
+                    if use_shell:
+                        # 对于shell模式，需要特殊处理包含空格的路径
+                        cmd_str = ' '.join(f'"{arg}"' for arg in test_cmd)
+                        result = subprocess.run(
+                            cmd_str,
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            shell=True
+                        )
+                    else:
+                        result = subprocess.run(
+                            test_cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            shell=False
+                        )
+                    
+                    self.logger.info(f"IAR测试命令返回码: {result.returncode}")
+                    self.logger.info(f"stdout: {result.stdout[:200]}...")
+                    self.logger.info(f"stderr: {result.stderr[:200]}...")
+                    
+                    if result.returncode == 0 or "IAR" in result.stderr or "IAR" in result.stdout:
+                        self.logger.info(f"IAR命令测试成功 (shell={use_shell})")
+                        return True
+                    else:
+                        self.logger.warning(f"IAR命令测试失败 (shell={use_shell}): {result.stderr}")
+                        
+                except Exception as e:
+                    self.logger.warning(f"IAR命令测试异常 (shell={use_shell}): {e}")
+                    continue
+            
+            self.logger.error("所有IAR命令测试方式都失败")
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"IAR命令测试异常: {e}")
+            return False
     
     def clean_project(self) -> bool:
         """
@@ -109,7 +243,9 @@ class IARBuilder:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
-                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0,
+                shell=False,  # 明确设置为False，避免shell权限问题
+                cwd=os.path.dirname(self.project_path) if self.project_path else None  # 设置工作目录
             )
             
             if result.returncode == 0:
@@ -164,15 +300,76 @@ class IARBuilder:
             
             self.logger.info(f"执行命令: {' '.join(cmd)}")
             
+            # 调试信息
+            self.logger.info(f"IAR可执行文件路径: {self.iar_exe_path}")
+            self.logger.info(f"项目文件路径: {self.project_path}")
+            self.logger.info(f"工作目录: {os.path.dirname(self.project_path) if self.project_path else None}")
+            
+            # 检查文件是否存在
+            if not os.path.exists(self.iar_exe_path):
+                return False, f"IAR可执行文件不存在: {self.iar_exe_path}"
+            if not os.path.exists(self.project_path):
+                return False, f"项目文件不存在: {self.project_path}"
+            
             # 执行编译
             start_time = time.time()
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_seconds,
-                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
-            )
+            result = None
+            
+            # 尝试不同的调用方式
+            for attempt, (use_shell, use_creationflags) in enumerate([
+                (False, subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0),
+                (False, 0),  # 不使用CREATE_NO_WINDOW
+                (True, 0)    # 使用shell模式
+            ]):
+                try:
+                    self.logger.info(f"编译尝试 {attempt + 1}/3: shell={use_shell}, creationflags={use_creationflags}")
+                    
+                    if use_shell:
+                        # 对于shell模式，需要特殊处理包含空格的路径
+                        cmd_str = ' '.join(f'"{arg}"' for arg in cmd)
+                        self.logger.info(f"执行shell命令: {cmd_str}")
+                        result = subprocess.run(
+                            cmd_str,
+                            capture_output=True,
+                            text=True,
+                            timeout=self.timeout_seconds,
+                            shell=True,
+                            cwd=os.path.dirname(self.project_path) if self.project_path else None
+                        )
+                    else:
+                        self.logger.info(f"执行命令: {' '.join(cmd)}")
+                        result = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=self.timeout_seconds,
+                            creationflags=use_creationflags,
+                            shell=False,
+                            cwd=os.path.dirname(self.project_path) if self.project_path else None
+                        )
+                    
+                    # 如果成功执行，跳出循环
+                    self.logger.info(f"编译尝试 {attempt + 1} 成功执行，返回码: {result.returncode}")
+                    break
+                    
+                except PermissionError as e:
+                    self.logger.warning(f"编译尝试 {attempt + 1} 权限不足: {e}")
+                    if attempt == 2:  # 最后一次尝试
+                        return False, f"权限不足，无法执行IAR编译。请尝试以管理员身份运行程序。\n错误详情: {e}"
+                    continue
+                except FileNotFoundError as e:
+                    self.logger.warning(f"编译尝试 {attempt + 1} 找不到文件: {e}")
+                    if attempt == 2:  # 最后一次尝试
+                        return False, f"找不到IAR可执行文件: {self.iar_exe_path}\n请检查IAR安装路径是否正确。"
+                    continue
+                except Exception as e:
+                    self.logger.warning(f"编译尝试 {attempt + 1} 异常: {e}")
+                    if attempt == 2:  # 最后一次尝试
+                        return False, f"执行IAR编译时发生异常: {e}"
+                    continue
+            
+            if result is None:
+                return False, "所有编译尝试都失败了"
             end_time = time.time()
             
             compile_time = end_time - start_time
