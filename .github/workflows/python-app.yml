@@ -1,4 +1,4 @@
-name: Python Application
+name: Build and Test
 
 on:
   push:
@@ -7,51 +7,47 @@ on:
     branches: [ release ]
 
 jobs:
-  test:
+  build:
     runs-on: windows-latest
-
-    steps:
-    - uses: actions/checkout@v4
     
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+        
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
-    
-    - name: Test application startup
+        
+    - name: Test imports
       run: |
-        python -c "import main; print('Application imports successfully')"
-    
-    - name: Test version manager
-      run: |
-        python -c "from tool_version_manager import ToolVersionManager; print('Version manager works')"
-    
-    - name: Test file manager
-      run: |
-        python -c "from file_manager import FileManager; print('File manager works')"
-    
+        python -c "import main"
+        python -c "from tool_version_manager import ToolVersionManager"
+        python -c "from file_manager import FileManager"
+        echo "All imports successful"
+        
     - name: Build executable
       run: |
         python build_exe.py
-        echo "Build completed successfully"
-    
-    - name: List build artifacts
+        echo "Build completed"
+        
+    - name: List files
       run: |
-        echo "Contents of release directory:"
-        dir release
-        echo "Contents of dist directory:"
-        dir dist
-    
-    - name: Upload build artifacts
+        echo "Release directory:"
+        if exist release dir release
+        echo "Dist directory:"
+        if exist dist dir dist
+        
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: IAR-Firmware-Publish-Tool-${{ github.run_number }}
+        name: IAR-Tool-Build
         path: |
-          release/*.exe
-          dist/*.exe
-        retention-days: 30
+          release/
+          dist/
+        retention-days: 7
