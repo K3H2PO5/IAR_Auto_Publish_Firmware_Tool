@@ -74,8 +74,8 @@ def update_hardcoded_version(version):
         with open(tool_version_manager_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        pattern = r'hardcoded_version = "([^"]+)"'
-        replacement = f'hardcoded_version = "{version}"'
+        pattern = r'hardcoded_version = "([^"]+)"\s*#.*'
+        replacement = f'hardcoded_version = "{version}"  # 这个版本号需要在打包时更新'
         
         if re.search(pattern, content):
             new_content = re.sub(pattern, replacement, content)
@@ -147,7 +147,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
