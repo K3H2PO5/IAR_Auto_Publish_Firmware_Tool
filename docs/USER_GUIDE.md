@@ -101,6 +101,7 @@
 - **Git Commit ID**：当前Git提交的短哈希值（7字符十六进制字符串）
 - **文件大小** / **File Size**：bin文件的实际字节大小（32位无符号整数，小端序）
 - **CRC校验值** / **CRC Checksum**：整个bin文件的CRC32校验值（32位无符号整数，小端序）
+- **哈希校验值** / **Hash Checksum**：32字节的哈希校验值（包含magic number和填充）
 
 **注意** / **Note**：固件版本号通过修改源文件后重新编译来更新，不直接修改bin文件。
 
@@ -108,11 +109,13 @@
 - **Commit ID地址** / **Commit ID Address**：通过`#pragma location`在C代码中指定的内存地址
 - **文件大小地址** / **File Size Address**：Commit ID地址 + 7字节偏移
 - **CRC校验地址** / **CRC Address**：文件大小地址 + 4字节偏移
+- **哈希校验地址** / **Hash Address**：通过`#pragma location`在C代码中指定的内存地址
 
 #### 数据格式说明 / Data Format Description
 - **Commit ID格式** / **Commit ID Format**：7字符十六进制字符串，如"a1b2c3d"
 - **文件大小格式** / **File Size Format**：4字节小端序32位无符号整数
 - **CRC格式** / **CRC Format**：4字节小端序32位无符号整数
+- **哈希格式** / **Hash Format**：32字节数组，前4字节为magic number (0x12345678)，后28字节为填充
 
 #### 内存布局示例 / Memory Layout Example
 ```
@@ -120,6 +123,8 @@
 0x00       "a1b2c3d"     7字节     Git Commit ID（短哈希）
 0x07       0x12345678    4字节     文件大小（小端序）
 0x0B       0xABCDEF01    4字节     CRC32校验值（小端序）
+0x0F       0x12345678    4字节     哈希校验值（magic number）
+0x13       0x00000000    28字节    哈希校验值（填充）
 ```
 
 ### Release Notes管理 / Release Notes Management

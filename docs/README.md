@@ -139,6 +139,7 @@ The tool automatically injects the following information into bin files:
 - **Git Commit ID**：当前Git提交的短哈希值（7字符）
 - **文件大小** / **File Size**：bin文件的实际字节大小（4字节，小端序）
 - **CRC校验值** / **CRC Checksum**：整个bin文件的CRC32校验值（4字节，小端序）
+- **哈希校验值** / **Hash Checksum**：32字节的哈希校验值（包含magic number和填充）
 
 **注意** / **Note**：固件版本号通过修改源文件后重新编译来更新，不直接修改bin文件。
 
@@ -146,11 +147,13 @@ The tool automatically injects the following information into bin files:
 - **Commit ID地址** / **Commit ID Address**：通过`#pragma location`在C代码中指定的内存地址
 - **文件大小地址** / **File Size Address**：Commit ID地址 + 7字节偏移
 - **CRC校验地址** / **CRC Address**：文件大小地址 + 4字节偏移
+- **哈希校验地址** / **Hash Address**：通过`#pragma location`在C代码中指定的内存地址
 
 ### 数据格式 / Data Format
 - **Commit ID**：7字符十六进制字符串，如"a1b2c3d"
 - **文件大小** / **File Size**：32位无符号整数，小端序
 - **CRC校验** / **CRC**：32位无符号整数，小端序
+- **哈希校验** / **Hash**：32字节数组，前4字节为magic number (0x12345678)，后28字节为填充
 
 ## 发布说明管理 / Release Notes Management
 
@@ -223,6 +226,13 @@ MIT License
 Welcome to submit Issues and Pull Requests!
 
 ## 更新日志 / Changelog
+
+### v1.0.3.4
+- 添加哈希校验和功能，支持__hash_value变量 / Added hash checksum functionality, support for __hash_value variable
+- 添加Flash起始地址显示，在主界面显示当前配置的Flash起始地址 / Added Flash start address display on main interface
+- 优化主界面布局，调整信息显示顺序：IAR路径、Flash起始地址、Git状态、固件版本 / Optimized main interface layout, adjusted information display order
+- 修复打包exe时出现的权限错误 / Fixed permission errors when running packaged exe
+- 改进IAR路径查找逻辑，确保始终返回有效的exe文件路径 / Improved IAR path finding logic, ensure always returns valid exe file path
 
 ### v1.0.3.0
 - 修复语言设置持久化问题 / Fixed language setting persistence issue

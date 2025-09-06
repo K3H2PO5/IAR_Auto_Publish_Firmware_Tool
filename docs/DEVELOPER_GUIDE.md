@@ -245,6 +245,7 @@ class GitManager:
 +0       commit_id     7字节     字符串          Git Commit ID（短哈希）
 +7       file_size     4字节     32位整数        文件大小（小端序）
 +11      crc32         4字节     32位整数        CRC32校验值（小端序）
++15      hash_value    32字节     字节数组        哈希校验值（magic number + 填充）
 ```
 
 #### 关键方法 / Key Methods
@@ -261,6 +262,9 @@ class BinaryModifier:
     
     def write_file_size(self, file_path: str, size: int, base_address: int) -> bool:
         """写入文件大小到指定地址"""
+    
+    def write_hash_value(self, file_path: str, hash_value: int) -> bool:
+        """写入哈希校验值（32字节数组）"""
     
     def write_crc32(self, file_path: str, crc: int, base_address: int) -> bool:
         """写入CRC32校验值到指定地址"""

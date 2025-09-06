@@ -15,6 +15,26 @@ This project adheres to [Semantic Versioning](https://semver.org/lang/zh-CN/).
 - 添加配置文件模板 / Add configuration file templates
 - 改进错误处理 / Improve error handling
 
+## [1.0.3.4] - 2025-01-XX
+
+### 新增 / Added
+- 添加哈希校验和功能，支持__hash_value变量 / Added hash checksum functionality, support for __hash_value variable
+- 添加Flash起始地址显示，在主界面显示当前配置的Flash起始地址 / Added Flash start address display on main interface
+- 添加环境诊断功能，帮助排查打包exe运行问题 / Added environment diagnosis feature to help troubleshoot packaged exe issues
+- 添加详细的路径搜索和验证日志 / Added detailed path search and validation logging
+
+### 改进 / Improved
+- 优化主界面布局，调整信息显示顺序：IAR路径、Flash起始地址、Git状态、固件版本 / Optimized main interface layout, adjusted information display order: IAR path, Flash start address, Git status, firmware version
+- 改进IAR路径查找逻辑，确保始终返回有效的exe文件路径 / Improved IAR path finding logic, ensure always returns valid exe file path
+- 优化subprocess调用策略，支持多种调用方式以提高兼容性 / Optimized subprocess calling strategy, support multiple calling methods for better compatibility
+- 改进错误处理，提供更详细的错误信息和诊断日志 / Improved error handling, provide more detailed error messages and diagnostic logs
+
+### 修复 / Fixed
+- 修复打包exe时出现的[WinError 5] 拒绝访问权限错误 / Fixed [WinError 5] Access Denied error when running packaged exe
+- 修复IAR路径解析问题，避免返回目录路径而不是exe文件路径 / Fixed IAR path parsing issue, avoid returning directory path instead of exe file path
+- 修复subprocess调用时路径包含空格的问题 / Fixed subprocess calling issue with paths containing spaces
+- 修复hash_value_offset未设置的问题，支持uint8_t数组类型 / Fixed hash_value_offset not set issue, support uint8_t array type
+
 ## [1.0.2.1] - 2024-01-XX
 
 ### 新增 / Added
