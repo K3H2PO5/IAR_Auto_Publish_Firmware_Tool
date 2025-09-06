@@ -5,7 +5,7 @@
 IAR固件发布工具 - 带GUI界面的Windows应用程序
 """
 
-__version__ = "1.0.2.8"
+__version__ = "1.0.2.9"
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog

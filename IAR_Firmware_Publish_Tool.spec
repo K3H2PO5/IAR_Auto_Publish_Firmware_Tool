@@ -31,14 +31,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='IAR_Firmware_Publish_Tool_vTool Version Increment Script
-==================================================
-Current version: 1.0.2.7
-New version: 1.0.2.8
-Updated version in main.py to: 1.0.2.8
-Version increment successful!
-Version updated from 1.0.2.7 to 1.0.2.8
-1.0.2.8',
+    name='IAR_Firmware_Publish_Tool_v1.0.2.9',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
