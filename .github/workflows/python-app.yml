@@ -34,3 +34,24 @@ jobs:
     - name: Test file manager
       run: |
         python -c "from file_manager import FileManager; print('File manager works')"
+    
+    - name: Build executable
+      run: |
+        python build_exe.py
+        echo "Build completed successfully"
+    
+    - name: List build artifacts
+      run: |
+        echo "Contents of release directory:"
+        dir release
+        echo "Contents of dist directory:"
+        dir dist
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: IAR-Firmware-Publish-Tool-${{ github.run_number }}
+        path: |
+          release/*.exe
+          dist/*.exe
+        retention-days: 30
