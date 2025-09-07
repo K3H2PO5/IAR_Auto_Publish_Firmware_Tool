@@ -14,5 +14,7 @@
     "bin_checksum_keyword": "__bin_checksum",
     "firmware_version_keyword": "__Firmware_Version",
     "enable_hash_value": true,
-    "hash_value_keyword": "__hash_value"
+    "hash_value_keyword": "__hash_value",
+    "add_timestamp_to_filename": false,
+    "publish_out_file": false
 }

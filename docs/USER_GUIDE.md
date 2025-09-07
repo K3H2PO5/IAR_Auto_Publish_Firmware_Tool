@@ -147,6 +147,32 @@
 {用户输入的更新信息，自动换行处理}
 ```
 
+### 文件发布管理 / File Publishing Management
+
+#### 本地发布 / Local Publishing
+- **发布目录** / **Publish Directory**：项目目录下的`fw_publish`文件夹
+- **文件类型** / **File Types**：.bin文件（必需），.out文件（可选）
+- **命名规则** / **Naming Convention**：`项目名_v版本号_commitID.bin/.out`
+
+#### 文件名时间戳 / Filename Timestamp
+- **功能** / **Function**：可选择在文件名中添加时间戳
+- **格式** / **Format**：`项目名_v版本号_commitID_YYYYMMDD_HHMMSS.bin`
+- **默认状态** / **Default State**：不添加时间戳
+- **配置位置** / **Configuration Location**：设置页面勾选框
+
+#### .out文件发布 / .out File Publishing
+- **功能** / **Function**：可选择同时发布.out文件
+- **文件来源** / **File Source**：自动查找与.bin文件同名的.out文件
+- **命名规则** / **Naming Convention**：与.bin文件使用相同的命名规则
+- **默认状态** / **Default State**：不发布.out文件
+- **配置位置** / **Configuration Location**：设置页面勾选框
+
+#### 发布流程 / Publishing Process
+1. **编译完成** / **Compilation Complete**：IAR编译成功后
+2. **文件复制** / **File Copying**：复制.bin文件到发布目录
+3. **可选复制** / **Optional Copying**：如果启用，复制.out文件
+4. **远程发布** / **Remote Publishing**：如果启用，复制到远程目录
+
 ## 高级功能 / Advanced Features
 
 ### 远程发布 / Remote Publishing
@@ -161,23 +187,13 @@
 远程发布目录/
 ├── 项目名_分支名1/
 │   ├── 固件文件_v版本号_commit.bin
+│   ├── 固件文件_v版本号_commit.out (可选)
 │   └── RELEASE_NOTES.md
 └── 项目名_分支名2/
     ├── 固件文件_v版本号_commit.bin
+    ├── 固件文件_v版本号_commit.out (可选)
     └── RELEASE_NOTES.md
 ```
-
-### 多语言支持 / Multi-language Support
-
-#### 支持语言 / Supported Languages
-- **简体中文** / **Simplified Chinese** (zh_CN)
-- **繁体中文** / **Traditional Chinese** (zh_TW)
-- **English** (en_US)
-
-#### 切换方法 / Switch Method
-1. 点击设置按钮 / Click Settings button
-2. 选择语言选项 / Select language option
-3. 点击保存 / Click Save
 
 ### 可执行文件打包 / Executable Packaging
 
@@ -309,6 +325,18 @@ python build_exe.py
 4. **立即发布** / **Immediate Release**：快速发布修复版本
 
 ---
+
+## 多语言支持 / Multi-language Support
+
+### 支持语言 / Supported Languages
+- **简体中文** / **Simplified Chinese** (zh_CN)
+- **繁体中文** / **Traditional Chinese** (zh_TW)
+- **English** (en_US)
+
+### 切换方法 / Switch Method
+1. 点击设置按钮 / Click Settings button
+2. 选择语言选项 / Select language option
+3. 点击保存 / Click Save
 
 ## 联系支持 / Contact Support
 

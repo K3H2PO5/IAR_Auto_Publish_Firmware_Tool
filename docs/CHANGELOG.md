@@ -15,6 +15,34 @@ This project adheres to [Semantic Versioning](https://semver.org/lang/zh-CN/).
 - 添加配置文件模板 / Add configuration file templates
 - 改进错误处理 / Improve error handling
 
+## [1.0.3.6] - 2025-01-XX
+
+### 新增 / Added
+- 添加.out文件发布功能，支持同时发布.bin和.out文件到本地和远程目录 / Added .out file publishing feature, support publishing both .bin and .out files to local and remote directories
+- 优化设置页面布局，调整复选框间距和对齐方式 / Optimized settings page layout, adjusted checkbox spacing and alignment
+
+### 改进 / Improved
+- 改进文件发布逻辑，确保.out文件与.bin文件使用相同的命名规则 / Improved file publishing logic, ensure .out files use the same naming convention as .bin files
+- 优化远程发布功能，支持.out文件的远程发布 / Optimized remote publishing feature, support .out file remote publishing
+- 改进设置页面用户体验，相关复选框布局更加美观 / Improved settings page user experience, related checkboxes layout more aesthetically pleasing
+
+### 修复 / Fixed
+- 修复.out文件查找逻辑，确保能正确找到对应的.out文件 / Fixed .out file finding logic, ensure correct .out file can be found
+- 修复设置页面复选框对齐问题 / Fixed settings page checkbox alignment issues
+
+## [1.0.3.5] - 2025-01-XX
+
+### 新增 / Added
+- 添加文件名时间戳控制选项，用户可选择是否在文件名中添加时间戳 / Added filename timestamp control option, users can choose whether to add timestamp to filename
+- 优化设置页面布局，将相关复选框放在同一行以节省空间 / Optimized settings page layout, place related checkboxes on the same row to save space
+
+### 改进 / Improved
+- 改进文件发布逻辑，支持可选的文件名时间戳功能 / Improved file publishing logic, support optional filename timestamp feature
+- 改进设置页面用户体验，相关功能选项布局更加紧凑 / Improved settings page user experience, related function options layout more compact
+
+### 修复 / Fixed
+- 修复配置合并逻辑，确保新配置项能正确添加到现有用户配置中 / Fixed configuration merge logic, ensure new configuration items can be correctly added to existing user configurations
+
 ## [1.0.3.4] - 2025-01-XX
 
 ### 新增 / Added

@@ -78,7 +78,8 @@ class FileManager:
             self.logger.error(f"创建固件发布目录失败: {e}")
     
     def generate_filename(self, commit_id: str, timestamp: Optional[datetime] = None, 
-                         version: str = None, project_path: str = None) -> str:
+                         version: str = None, project_path: str = None, add_timestamp: bool = True, 
+                         file_extension: str = ".bin") -> str:
         """
         生成带时间戳、commit ID和git分支的文件名
         
@@ -87,15 +88,14 @@ class FileManager:
             timestamp: 时间戳，如果为None则使用当前时间
             version: 版本号，如果提供则包含在文件名中
             project_path: 项目路径，用于获取git分支
+            add_timestamp: 是否在文件名中添加时间戳
+            file_extension: 文件扩展名，默认为".bin"
             
         Returns:
             str: 生成的文件名
         """
         if timestamp is None:
             timestamp = datetime.now()
-        
-        # 格式化时间戳
-        time_str = timestamp.strftime("%Y%m%d_%H%M%S")
         
         # 截取短commit ID
         short_commit_id = commit_id[:8] if commit_id else "unknown"
@@ -104,12 +104,22 @@ class FileManager:
         branch_name = self.get_git_branch(project_path)
         
         # 生成文件名
-        if version:
-            # 包含版本号的文件名格式: 项目名_分支名_版本号_时间戳_commitID.bin
-            filename = f"{self.project_name}_{branch_name}_{version}_{time_str}_{short_commit_id}.bin"
+        if add_timestamp:
+            # 格式化时间戳
+            time_str = timestamp.strftime("%Y%m%d_%H%M%S")
+            if version:
+                # 包含版本号的文件名格式: 项目名_分支名_版本号_时间戳_commitID.扩展名
+                filename = f"{self.project_name}_{branch_name}_{version}_{time_str}_{short_commit_id}{file_extension}"
+            else:
+                # 不包含版本号的文件名格式: 项目名_分支名_时间戳_commitID.扩展名
+                filename = f"{self.project_name}_{branch_name}_{time_str}_{short_commit_id}{file_extension}"
         else:
-            # 不包含版本号的文件名格式: 项目名_分支名_时间戳_commitID.bin
-            filename = f"{self.project_name}_{branch_name}_{time_str}_{short_commit_id}.bin"
+            if version:
+                # 包含版本号但不包含时间戳的文件名格式: 项目名_分支名_版本号_commitID.扩展名
+                filename = f"{self.project_name}_{branch_name}_{version}_{short_commit_id}{file_extension}"
+            else:
+                # 不包含版本号和时间戳的文件名格式: 项目名_分支名_commitID.扩展名
+                filename = f"{self.project_name}_{branch_name}_{short_commit_id}{file_extension}"
         
         self.logger.info(f"生成文件名: {filename}")
         return filename
@@ -322,7 +332,8 @@ class FileManager:
             return False, error_msg, result_info
     
     def publish_firmware(self, source_bin_path: str, commit_id: str, version: str,
-                        timestamp: Optional[datetime] = None) -> Tuple[bool, str, dict]:
+                        timestamp: Optional[datetime] = None, add_timestamp: bool = True, 
+                        publish_out_file: bool = False) -> Tuple[bool, str, dict]:
         """
         发布固件到fw_publish目录
         
@@ -331,6 +342,8 @@ class FileManager:
             commit_id: commit ID
             version: 版本号
             timestamp: 时间戳
+            add_timestamp: 是否在文件名中添加时间戳
+            publish_out_file: 是否同时发布.out文件
             
         Returns:
             Tuple[bool, str, dict]: (是否成功, 消息, 文件信息)
@@ -354,14 +367,14 @@ class FileManager:
             result_info['file_size'] = os.path.getsize(source_bin_path)
             
             # 生成发布文件名
-            new_filename = self.generate_filename(commit_id, timestamp, version, self.project_path)
+            new_filename = self.generate_filename(commit_id, timestamp, version, self.project_path, add_timestamp)
             result_info['new_filename'] = new_filename
             
             # 生成发布路径
             destination_path = os.path.join(self.fw_publish_directory, new_filename)
             result_info['destination_path'] = destination_path
             
-            # 复制文件到发布目录
+            # 复制bin文件到发布目录
             if self.copy_file(source_bin_path, destination_path):
                 result_info['operation'] = 'publish'
                 success_msg = f"固件发布成功\n"
@@ -372,6 +385,24 @@ class FileManager:
                 success_msg += f"Commit ID: {commit_id}\n"
                 success_msg += f"时间戳: {result_info['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}"
                 
+                # 如果需要发布.out文件
+                if publish_out_file:
+                    out_file_path = self._find_out_file(source_bin_path)
+                    if out_file_path and os.path.exists(out_file_path):
+                        # 生成.out文件名（与bin文件名相同，但扩展名为.out）
+                        out_filename = new_filename.replace('.bin', '.out')
+                        out_destination_path = os.path.join(self.fw_publish_directory, out_filename)
+                        
+                        if self.copy_file(out_file_path, out_destination_path):
+                            success_msg += f"\n.out文件发布成功: {out_destination_path}"
+                            self.logger.info(f".out文件发布成功: {out_file_path} -> {out_destination_path}")
+                        else:
+                            success_msg += f"\n.out文件发布失败: {out_file_path}"
+                            self.logger.warning(f".out文件发布失败: {out_file_path}")
+                    else:
+                        success_msg += f"\n未找到对应的.out文件"
+                        self.logger.warning(f"未找到对应的.out文件，源bin文件: {source_bin_path}")
+                
                 return True, success_msg, result_info
             else:
                 return False, "固件发布失败", result_info
@@ -381,6 +412,35 @@ class FileManager:
             self.logger.error(error_msg)
             return False, error_msg, result_info
     
+    def _find_out_file(self, bin_file_path: str) -> Optional[str]:
+        """
+        根据bin文件路径查找对应的.out文件
+        
+        Args:
+            bin_file_path: bin文件路径
+            
+        Returns:
+            str: .out文件路径，如果未找到返回None
+        """
+        try:
+            # 获取bin文件所在目录
+            bin_dir = os.path.dirname(bin_file_path)
+            bin_filename = os.path.basename(bin_file_path)
+            
+            # 将.bin替换为.out
+            out_filename = bin_filename.replace('.bin', '.out')
+            out_file_path = os.path.join(bin_dir, out_filename)
+            
+            if os.path.exists(out_file_path):
+                self.logger.info(f"找到.out文件: {out_file_path}")
+                return out_file_path
+            else:
+                self.logger.warning(f"未找到.out文件: {out_file_path}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"查找.out文件失败: {e}")
+            return None
     
     def list_published_firmware(self) -> List[dict]:
         """
@@ -415,7 +475,8 @@ class FileManager:
         
         return files
     
-    def publish_to_remote(self, bin_file_path: str, release_note_path: str, branch_name: str = "main") -> Tuple[bool, str, dict]:
+    def publish_to_remote(self, bin_file_path: str, release_note_path: str, branch_name: str = "main", 
+                         publish_out_file: bool = False) -> Tuple[bool, str, dict]:
         """
         发布到远程目录
         
@@ -423,6 +484,7 @@ class FileManager:
             bin_file_path: bin文件路径
             release_note_path: release note文件路径
             branch_name: 分支名称
+            publish_out_file: 是否同时发布.out文件
             
         Returns:
             Tuple[bool, str, dict]: (成功标志, 消息, 结果信息)
@@ -431,6 +493,7 @@ class FileManager:
             'remote_directory': '',
             'bin_file_copied': False,
             'release_note_copied': False,
+            'out_file_copied': False,
             'files': []
         }
         
@@ -498,10 +561,33 @@ class FileManager:
             else:
                 self.logger.warning(f"Release Notes文件不存在: {release_note_path}")
             
+            # 复制.out文件（如果需要）
+            if publish_out_file:
+                out_file_path = self._find_out_file(bin_file_path)
+                if out_file_path and os.path.exists(out_file_path):
+                    out_filename = os.path.basename(out_file_path)
+                    remote_out_path = os.path.join(remote_sub_dir, out_filename)
+                    
+                    if self.copy_file(out_file_path, remote_out_path):
+                        result_info['out_file_copied'] = True
+                        result_info['files'].append({
+                            'type': 'out',
+                            'local_path': out_file_path,
+                            'remote_path': remote_out_path,
+                            'filename': out_filename
+                        })
+                        self.logger.info(f".out文件已复制到远程目录: {remote_out_path}")
+                    else:
+                        self.logger.warning(f"复制.out文件失败: {out_file_path}")
+                else:
+                    self.logger.warning(f"未找到对应的.out文件: {bin_file_path}")
+            
             success_msg = f"远程发布成功\n"
             success_msg += f"远程目录: {remote_sub_dir}\n"
             success_msg += f"bin文件: {'已复制' if result_info['bin_file_copied'] else '复制失败'}\n"
             success_msg += f"Release Notes: {'已复制' if result_info['release_note_copied'] else '复制失败'}\n"
+            if publish_out_file:
+                success_msg += f".out文件: {'已复制' if result_info['out_file_copied'] else '复制失败'}\n"
             success_msg += f"文件数量: {len(result_info['files'])}"
             
             return True, success_msg, result_info

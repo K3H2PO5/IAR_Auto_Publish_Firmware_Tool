@@ -31,7 +31,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='IAR_Firmware_Publish_Tool_v1.0.3.4',
+    name='IAR_Firmware_Publish_Tool_v1.0.3.6',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

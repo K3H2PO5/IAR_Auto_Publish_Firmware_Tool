@@ -23,8 +23,6 @@ An automated firmware publishing tool for IAR Embedded Workbench projects, suppo
   **Git Integration** - Automatically commit version changes, retrieve commit information, support custom commit messages
 - 🛠️ **二进制修改** - 自动修改bin文件，注入版本和Git信息  
   **Binary Modification** - Automatically modify bin files, inject version and Git information
-- 🌐 **多语言支持** - 支持中文、繁体中文、英文界面  
-  **Multi-language Support** - Supports Chinese, Traditional Chinese, and English interfaces
 - 📁 **文件管理** - 自动复制和发布固件文件，支持本地和远程发布  
   **File Management** - Automatically copy and publish firmware files, supports local and remote publishing
 - ⚙️ **配置管理** - 用户配置持久化保存  
@@ -35,6 +33,8 @@ An automated firmware publishing tool for IAR Embedded Workbench projects, suppo
   **Remote Publishing** - Support publishing firmware to remote directories
 - 📦 **可执行文件打包** - 支持打包为独立的exe文件  
   **Executable Packaging** - Support packaging as standalone exe files
+- 🌐 **多语言支持** - 支持中文、繁体中文、英文界面  
+  **Multi-language Support** - Supports Chinese, Traditional Chinese, and English interfaces
 
 ## 系统要求 / System Requirements
 

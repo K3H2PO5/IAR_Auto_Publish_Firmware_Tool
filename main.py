@@ -5,7 +5,7 @@
 IAR固件发布工具 - 带GUI界面的Windows应用程序
 """
 
-__version__ = "1.0.3.4"
+__version__ = "1.0.3.6"
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
@@ -107,6 +107,8 @@ LANGUAGES = {
             'bin_checksum_keyword': '变量名称:',
             'hash_value_keyword': '变量名称:',
             'firmware_version_keyword': '固件版本变量名称:',
+            'add_timestamp_to_filename': 'bin文件名添加时间戳',
+            'publish_out_file': '发布.out文件',
             'feature_settings_desc': '选择要启用的功能模块，禁用后相关功能将不会执行',
             'msg_compile_success_no_bin': '编译成功但未找到输出bin文件',
             'msg_compile_complete': '编译完成！',
@@ -207,6 +209,8 @@ LANGUAGES = {
             'bin_checksum_keyword': '變數名稱:',
             'hash_value_keyword': '變數名稱:',
             'firmware_version_keyword': '固件版本變數名稱:',
+            'add_timestamp_to_filename': 'bin檔案名添加時間戳',
+            'publish_out_file': '發布.out檔案',
             'feature_settings_desc': '選擇要啟用的功能模組，禁用後相關功能將不會執行',
             'msg_compile_success_no_bin': '編譯成功但未找到輸出bin檔案',
             'msg_compile_complete': '編譯完成！',
@@ -307,6 +311,8 @@ LANGUAGES = {
             'bin_checksum_keyword': 'Variable Name:',
             'hash_value_keyword': 'Variable Name:',
             'firmware_version_keyword': 'Firmware Version Variable Name:',
+            'add_timestamp_to_filename': 'Add timestamp to bin filename',
+            'publish_out_file': 'Publish .out file',
             'feature_settings_desc': 'Select which feature modules to enable. Disabled features will not be executed.',
             'msg_compile_success_no_bin': 'Compilation successful but no output bin file found',
             'msg_compile_complete': 'Compilation Complete!',
@@ -488,6 +494,20 @@ class MCUAutoBuildApp:
     def _merge_user_config(self, user_config: dict):
         """合并用户配置到默认配置"""
         try:
+            # 确保新配置项有默认值
+            default_values = {
+                'add_timestamp_to_filename': False,
+                'publish_out_file': False,
+                'enable_hash_value': True,
+                'hash_value_keyword': '__hash_value'
+            }
+            
+            # 为缺失的配置项设置默认值
+            for key, default_value in default_values.items():
+                if key not in user_config:
+                    user_config[key] = default_value
+                    self.log_message(f"为缺失的配置项 {key} 设置默认值: {default_value}")
+            
             # 直接合并用户配置到主配置
             self.config.update(user_config)
             self.log_message("用户配置合并成功")
@@ -508,9 +528,14 @@ class MCUAutoBuildApp:
                 "enable_git_commit_id": True,
                 "enable_file_size": True,
                 "enable_bin_checksum": True,
+                "enable_hash_value": True,
                 "git_commit_id_keyword": "__git_commit_id",
                 "file_size_keyword": "__file_size",
-                "bin_checksum_keyword": "__bin_checksum"
+                "bin_checksum_keyword": "__bin_checksum",
+                "hash_value_keyword": "__hash_value",
+                "firmware_version_keyword": "__Firmware_Version",
+                "add_timestamp_to_filename": False,
+                "publish_out_file": False
             }
             
             with open("user_config.json", 'w', encoding='utf-8') as f:
@@ -1411,8 +1436,11 @@ class MCUAutoBuildApp:
                 # 13. 发布固件到fw_publish目录
                 self.update_status("发布固件...")
                 try:
+                    add_timestamp = self.config.get('add_timestamp_to_filename', False)
+                    publish_out_file = self.config.get('publish_out_file', False)
                     success, message, publish_info = self.file_manager.publish_firmware(
-                        bin_info['path'], commit_id, next_version)
+                        bin_info['path'], commit_id, next_version, add_timestamp=add_timestamp, 
+                        publish_out_file=publish_out_file)
                     
                     if not success:
                         self.log_message(f"固件发布失败: {message}")
@@ -1452,8 +1480,9 @@ class MCUAutoBuildApp:
                             self.log_message(f"远程发布文件: bin={renamed_bin_path}, release_note={release_note_path}")
                             
                             # 发布到远程目录
+                            publish_out_file = self.config.get('publish_out_file', False)
                             remote_success, remote_message, remote_info = self.file_manager.publish_to_remote(
-                                renamed_bin_path, release_note_path, branch_name)
+                                renamed_bin_path, release_note_path, branch_name, publish_out_file)
                             
                             if remote_success:
                                 self.log_message("远程发布成功")
@@ -1560,7 +1589,15 @@ class MCUAutoBuildApp:
         ttk.Button(main_frame, text=self.get_text('select'), command=self.browse_config_file_settings).grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
         row += 1
         
-        # 固件版本变量名称（永远开启，放在最前面）
+        # bin文件名添加时间戳和发布.out文件（同一行）
+        self.settings_add_timestamp_var = tk.BooleanVar(value=self.config.get('add_timestamp_to_filename', False))
+        ttk.Checkbutton(main_frame, text=self.get_text('add_timestamp_to_filename'), variable=self.settings_add_timestamp_var).grid(row=row, column=0, sticky=tk.W, pady=5)
+        
+        self.settings_publish_out_file_var = tk.BooleanVar(value=self.config.get('publish_out_file', False))
+        ttk.Checkbutton(main_frame, text=self.get_text('publish_out_file'), variable=self.settings_publish_out_file_var).grid(row=row, column=1, sticky=tk.W, padx=(20, 0), pady=5)
+        row += 1
+        
+        # 固件版本变量名称（永远开启）
         ttk.Label(main_frame, text=self.get_text('firmware_version_keyword')).grid(row=row, column=0, sticky=tk.W, pady=5)
         self.settings_firmware_version_keyword_var = tk.StringVar(value=self.config.get('firmware_version_keyword', '__Firmware_Version'))
         ttk.Entry(main_frame, textvariable=self.settings_firmware_version_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
@@ -1798,6 +1835,8 @@ class MCUAutoBuildApp:
             self.config['bin_checksum_keyword'] = self.settings_bin_checksum_keyword_var.get()
             self.config['hash_value_keyword'] = self.settings_hash_value_keyword_var.get()
             self.config['firmware_version_keyword'] = self.settings_firmware_version_keyword_var.get()
+            self.config['add_timestamp_to_filename'] = self.settings_add_timestamp_var.get()
+            self.config['publish_out_file'] = self.settings_publish_out_file_var.get()
             
             # 保存语言设置到user_config.json
             if hasattr(self, 'settings_language_var'):

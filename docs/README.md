@@ -36,10 +36,8 @@ An automated firmware publishing tool for IAR Embedded Workbench projects, suppo
   **Git Integration** - Automatically commit version changes, retrieve commit information, support custom commit messages
 - 🛠️ **二进制修改** - 自动修改bin文件，注入版本和Git信息  
   **Binary Modification** - Automatically modify bin files, inject version and Git information
-- 🌐 **多语言支持** - 支持中文、繁体中文、英文界面  
-  **Multi-language Support** - Supports Chinese, Traditional Chinese, and English interfaces
-- 📁 **文件管理** - 自动复制和发布固件文件，支持本地和远程发布  
-  **File Management** - Automatically copy and publish firmware files, supports local and remote publishing
+- 📁 **文件管理** - 自动复制和发布固件文件，支持本地和远程发布，可选择发布.out文件  
+  **File Management** - Automatically copy and publish firmware files, supports local and remote publishing, optional .out file publishing
 - ⚙️ **配置管理** - 用户配置持久化保存  
   **Configuration Management** - Persistent user configuration storage
 - 📝 **发布说明** - 自动生成和管理Release Notes  
@@ -48,6 +46,10 @@ An automated firmware publishing tool for IAR Embedded Workbench projects, suppo
   **Remote Publishing** - Support publishing firmware to remote directories
 - 📦 **可执行文件打包** - 支持打包为独立的exe文件  
   **Executable Packaging** - Support packaging as standalone exe files
+- ⏰ **文件名时间戳** - 可选择在文件名中添加时间戳  
+  **Filename Timestamp** - Optional timestamp addition to filenames
+- 🌐 **多语言支持** - 支持中文、繁体中文、英文界面  
+  **Multi-language Support** - Supports Chinese, Traditional Chinese, and English interfaces
 
 ## 系统要求 / System Requirements
 
@@ -226,6 +228,14 @@ MIT License
 Welcome to submit Issues and Pull Requests!
 
 ## 更新日志 / Changelog
+
+### v1.0.3.6
+- 添加.out文件发布功能，支持同时发布.bin和.out文件到本地和远程目录 / Added .out file publishing feature, support publishing both .bin and .out files to local and remote directories
+- 优化设置页面布局，调整复选框间距和对齐方式 / Optimized settings page layout, adjusted checkbox spacing and alignment
+
+### v1.0.3.5
+- 添加文件名时间戳控制选项，用户可选择是否在文件名中添加时间戳 / Added filename timestamp control option, users can choose whether to add timestamp to filename
+- 优化设置页面布局，将相关复选框放在同一行以节省空间 / Optimized settings page layout, place related checkboxes on the same row to save space
 
 ### v1.0.3.4
 - 添加哈希校验和功能，支持__hash_value变量 / Added hash checksum functionality, support for __hash_value variable
