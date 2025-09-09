@@ -157,11 +157,7 @@ exe = EXE(
 )
 '''
     
-    # Create backup spec file
-    backup_spec = f"{spec_name}_backup.spec"
-    if os.path.exists(f"{spec_name}.spec"):
-        shutil.copy2(f"{spec_name}.spec", backup_spec)
-        print("[OK] Created backup spec file")
+    # Skip backup spec file creation
     
     try:
         with open(f"{spec_name}.spec", "w", encoding="utf-8") as f:

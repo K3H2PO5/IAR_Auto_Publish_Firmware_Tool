@@ -5,7 +5,7 @@
 IAR固件发布工具 - 带GUI界面的Windows应用程序
 """
 
-__version__ = "1.0.3.6"
+__version__ = "1.0.3.7"
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
@@ -429,11 +429,23 @@ class MCUAutoBuildApp:
         # 设置关闭事件
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
     
+    def _get_script_dir(self):
+        """获取脚本所在目录，兼容exe和Python脚本环境"""
+        if getattr(sys, 'frozen', False):
+            # 如果是打包的exe，使用exe所在目录
+            return os.path.dirname(sys.executable)
+        else:
+            # 如果是Python脚本，使用脚本所在目录
+            return os.path.dirname(os.path.abspath(__file__))
+    
     def load_config(self):
         """加载配置文件"""
-        # 加载工具默认配置
-        default_config_path = "config.json"
-        user_config_path = "user_config.json"
+        # 获取脚本所在目录，确保exe环境下能正确找到配置文件
+        script_dir = self._get_script_dir()
+        
+        # 使用绝对路径加载配置文件
+        default_config_path = os.path.join(script_dir, "config.json")
+        user_config_path = os.path.join(script_dir, "user_config.json")
         
         try:
             # 加载默认配置
@@ -538,7 +550,10 @@ class MCUAutoBuildApp:
                 "publish_out_file": False
             }
             
-            with open("user_config.json", 'w', encoding='utf-8') as f:
+            # 获取脚本所在目录
+            script_dir = self._get_script_dir()
+            user_config_path = os.path.join(script_dir, "user_config.json")
+            with open(user_config_path, 'w', encoding='utf-8') as f:
                 json.dump(user_config, f, indent=4, ensure_ascii=False)
             
             self.log_message("用户配置文件创建成功")
@@ -893,7 +908,9 @@ class MCUAutoBuildApp:
                 user_config['info_file'] = info_file_name
             
             # 保存到用户配置文件
-            with open("user_config.json", 'w', encoding='utf-8') as f:
+            script_dir = self._get_script_dir()
+            user_config_path = os.path.join(script_dir, "user_config.json")
+            with open(user_config_path, 'w', encoding='utf-8') as f:
                 json.dump(user_config, f, indent=4, ensure_ascii=False)
             
             # 更新内存中的配置
@@ -1869,7 +1886,9 @@ class MCUAutoBuildApp:
             }
             
             # 保存到用户配置文件
-            with open("user_config.json", 'w', encoding='utf-8') as f:
+            script_dir = self._get_script_dir()
+            user_config_path = os.path.join(script_dir, "user_config.json")
+            with open(user_config_path, 'w', encoding='utf-8') as f:
                 json.dump(user_config, f, indent=4, ensure_ascii=False)
             
             # 更新主界面的IAR路径显示

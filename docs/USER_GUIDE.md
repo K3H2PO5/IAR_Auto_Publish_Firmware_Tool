@@ -40,9 +40,16 @@
 - **要求** / **Requirements**：路径必须包含IAR编译器可执行文件
 
 #### 项目路径 / Project Path
-- **作用** / **Purpose**：指定包含.ewp文件的IAR项目目录
+- **作用** / **Purpose**：指定IAR项目的根目录（不是.ewp文件路径）
 - **格式** / **Format**：绝对路径或相对路径
-- **要求** / **Requirements**：目录必须包含.ewp项目文件
+- **要求** / **Requirements**：目录必须包含EWARM子目录和.ewp项目文件
+- **示例** / **Example**：`E:/MCU_Program/SW_ESC_Gimbal`（包含EWARM/MCU.ewp）
+
+#### IAR项目文件路径 / IAR Project File Path
+- **作用** / **Purpose**：指定具体的.ewp文件路径
+- **格式** / **Format**：绝对路径或相对路径
+- **要求** / **Requirements**：必须是有效的.ewp文件
+- **示例** / **Example**：`E:/MCU_Program/SW_ESC_Gimbal/EWARM/MCU.ewp`
 
 #### 本地发布目录 / Local Publish Directory
 - **作用** / **Purpose**：固件文件的本地发布目录
@@ -169,9 +176,16 @@
 
 #### 发布流程 / Publishing Process
 1. **编译完成** / **Compilation Complete**：IAR编译成功后
-2. **文件复制** / **File Copying**：复制.bin文件到发布目录
-3. **可选复制** / **Optional Copying**：如果启用，复制.out文件
-4. **远程发布** / **Remote Publishing**：如果启用，复制到远程目录
+2. **bin文件查找** / **Bin File Finding**：严格匹配.ewp文件名对应的.bin文件
+3. **文件复制** / **File Copying**：复制.bin文件到发布目录
+4. **可选复制** / **Optional Copying**：如果启用，复制.out文件
+5. **远程发布** / **Remote Publishing**：如果启用，复制到远程目录
+
+#### bin文件查找策略 / Bin File Finding Strategy
+- **严格匹配** / **Strict Matching**：只查找与.ewp文件名完全一致的.bin文件
+- **查找位置** / **Search Location**：`{项目根目录}/EWARM/Debug/Exe/`
+- **命名规则** / **Naming Rule**：`{项目名}.bin`（如MCU.ewp → MCU.bin）
+- **错误处理** / **Error Handling**：如果找不到匹配文件，直接报错，不选择其他文件
 
 ## 高级功能 / Advanced Features
 
@@ -228,11 +242,18 @@ python build_exe.py
 #### 2. 编译失败 / Compilation Failed
 **症状** / **Symptoms**：IAR编译过程出错 / IAR compilation process error
 
+**常见错误** / **Common Errors**：
+- `ERROR, Failed to open project file: Illegal path` - 路径格式错误
+- `编译成功但未找到输出bin文件` - bin文件查找失败
+- `配置不完整` - 配置文件路径问题
+
 **解决方案** / **Solutions**：
 - 检查IAR是否正确安装 / Check if IAR is properly installed
 - 验证项目路径和文件 / Verify project path and files
 - 确认IAR版本兼容性 / Confirm IAR version compatibility
 - 检查项目配置 / Check project configuration
+- 确保项目路径指向包含.ewp文件的目录 / Ensure project path points to directory containing .ewp files
+- 检查bin文件是否与ewp文件名一致 / Check if bin file name matches .ewp file name
 
 #### 3. Git操作失败 / Git Operation Failed
 **症状** / **Symptoms**：Git提交或状态检查失败 / Git commit or status check failed
@@ -243,7 +264,22 @@ python build_exe.py
 - 验证网络连接 / Verify network connection
 - 检查文件权限 / Check file permissions
 
-#### 4. 远程发布失败 / Remote Publishing Failed
+#### 4. 路径和文件查找问题 / Path and File Finding Issues
+**症状** / **Symptoms**：bin文件查找失败或路径错误 / Bin file finding failed or path errors
+
+**常见问题** / **Common Issues**：
+- 备份了错误的bin文件（如mcu_old.bin、MCU123333_backup.bin等）/ Backed up wrong bin files (e.g., mcu_old.bin, MCU123333_backup.bin, etc.)
+- 提示"编译成功但未找到输出bin文件" / Prompt "Compilation successful but no output bin file found"
+- IAR编译报错"Illegal path" / IAR compilation error "Illegal path"
+
+**解决方案** / **Solutions**：
+- 确保项目路径指向项目根目录，不是.ewp文件路径 / Ensure project path points to project root directory, not .ewp file path
+- 检查EWARM/Debug/Exe目录下是否存在与.ewp文件名一致的.bin文件 / Check if .bin file with same name as .ewp file exists in EWARM/Debug/Exe directory
+- 确认.ewp文件路径配置正确 / Confirm .ewp file path configuration is correct
+- 检查IAR编译输出目录结构 / Check IAR compilation output directory structure
+- 查看日志文件获取详细错误信息 / Check log files for detailed error information
+
+#### 5. 远程发布失败 / Remote Publishing Failed
 **症状** / **Symptoms**：文件未复制到远程目录 / Files not copied to remote directory
 
 **解决方案** / **Solutions**：
@@ -351,4 +387,4 @@ If you encounter problems during use, please:
 
 ---
 
-*最后更新 / Last Updated: 2024-01-XX*
+*最后更新 / Last Updated: 2025-01-09*

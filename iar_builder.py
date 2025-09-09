@@ -35,8 +35,11 @@ class IARBuilder:
         # 从project_settings中获取IAR相关路径，如果没有则从根级别获取
         project_settings = config.get('project_settings', {})
         self.workspace_path = project_settings.get('iar_workspace_path', '') or config.get('iar_workspace_path', '')
-        self.project_path = project_settings.get('iar_project_path', '') or config.get('iar_project_path', '')
+        self.iar_project_path = project_settings.get('iar_project_path', '') or config.get('iar_project_path', '')
         self.output_bin_path = project_settings.get('output_bin_path', '') or config.get('output_bin_path', '')
+        
+        # 项目根目录从config中获取，这是用户设置的项目根目录
+        self.project_path = config.get('project_path', '')
         self.build_config = config.get('build_configuration', 'Debug')
         self.clean_before_build = config.get('clean_before_build', False)  # 默认使用增量编译
         self.timeout_seconds = config.get('timeout_seconds', 300)
@@ -233,7 +236,7 @@ class IARBuilder:
             # 构建清理命令
             cmd = [
                 self.iar_exe_path,
-                self.project_path,
+                self.iar_project_path,
                 '-clean',
                 self.build_config
             ]
@@ -273,7 +276,7 @@ class IARBuilder:
             Tuple[bool, str]: (编译是否成功, 输出信息)
         """
         try:
-            self.logger.info(f"开始编译项目: {self.project_path}")
+            self.logger.info(f"开始编译项目: {self.iar_project_path}")
             self.logger.info(f"编译配置: {self.build_config}")
             
             # 决定是否清理项目
@@ -285,7 +288,7 @@ class IARBuilder:
                 # 使用build命令进行全量编译
                 cmd = [
                     self.iar_exe_path,
-                    self.project_path,
+                    self.iar_project_path,
                     '-build',
                     self.build_config
                 ]
@@ -294,7 +297,7 @@ class IARBuilder:
                 # 使用make命令进行增量编译
                 cmd = [
                     self.iar_exe_path,
-                    self.project_path,
+                    self.iar_project_path,
                     self.build_config  # 不指定-build参数，默认为make操作
                 ]
             
@@ -302,14 +305,14 @@ class IARBuilder:
             
             # 调试信息
             self.logger.info(f"IAR可执行文件路径: {self.iar_exe_path}")
-            self.logger.info(f"项目文件路径: {self.project_path}")
-            self.logger.info(f"工作目录: {os.path.dirname(self.project_path) if self.project_path else None}")
+            self.logger.info(f"项目文件路径: {self.iar_project_path}")
+            self.logger.info(f"工作目录: {os.path.dirname(self.iar_project_path) if self.iar_project_path else None}")
             
             # 检查文件是否存在
             if not os.path.exists(self.iar_exe_path):
                 return False, f"IAR可执行文件不存在: {self.iar_exe_path}"
-            if not os.path.exists(self.project_path):
-                return False, f"项目文件不存在: {self.project_path}"
+            if not os.path.exists(self.iar_project_path):
+                return False, f"项目文件不存在: {self.iar_project_path}"
             
             # 执行编译
             start_time = time.time()
@@ -414,28 +417,73 @@ class IARBuilder:
     
     def get_bin_file_info(self) -> dict:
         """
-        获取bin文件信息
+        获取bin文件信息 - 严格匹配ewp文件名
         
         Returns:
             dict: bin文件信息
         """
-        info = {
-            'exists': False,
-            'path': self.output_bin_path,
-            'size': 0,
-            'modified_time': None
-        }
-        
-        if self.check_bin_file():
-            try:
-                stat = os.stat(self.output_bin_path)
-                info['exists'] = True
-                info['size'] = stat.st_size
-                info['modified_time'] = time.ctime(stat.st_mtime)
-            except Exception as e:
-                self.logger.error(f"获取bin文件信息失败: {e}")
-        
-        return info
+        try:
+            # 从项目根目录推导Exe目录
+            exe_dir = os.path.join(self.project_path, "EWARM", "Debug", "Exe")
+            
+            if not os.path.exists(exe_dir):
+                self.logger.error(f"Exe目录不存在: {exe_dir}")
+                return {
+                    'exists': False,
+                    'path': '',
+                    'size': 0,
+                    'modified_time': None
+                }
+            
+            # 使用iar_project_path获取ewp文件名，严格匹配
+            if not self.iar_project_path:
+                self.logger.error("未找到ewp文件路径")
+                return {
+                    'exists': False,
+                    'path': '',
+                    'size': 0,
+                    'modified_time': None
+                }
+                
+            project_name = os.path.splitext(os.path.basename(self.iar_project_path))[0]
+            expected_bin_name = f"{project_name}.bin"
+            expected_bin_path = os.path.join(exe_dir, expected_bin_name)
+            
+            self.logger.info(f"查找bin文件 - ewp文件: {self.iar_project_path}")
+            self.logger.info(f"查找bin文件 - 项目名: {project_name}")
+            self.logger.info(f"查找bin文件 - 期望文件名: {expected_bin_name}")
+            self.logger.info(f"查找bin文件 - 期望路径: {expected_bin_path}")
+            self.logger.info(f"查找bin文件 - 文件是否存在: {os.path.exists(expected_bin_path)}")
+            
+            info = {
+                'exists': False,
+                'path': expected_bin_path,
+                'size': 0,
+                'modified_time': None
+            }
+            
+            if os.path.exists(expected_bin_path):
+                try:
+                    stat = os.stat(expected_bin_path)
+                    info['exists'] = True
+                    info['size'] = stat.st_size
+                    info['modified_time'] = time.ctime(stat.st_mtime)
+                    self.logger.info(f"找到项目bin文件: {expected_bin_path}, 大小: {stat.st_size} 字节")
+                except Exception as e:
+                    self.logger.error(f"获取bin文件信息失败: {e}")
+            else:
+                self.logger.error(f"未找到与ewp文件名一致的bin文件: {expected_bin_name}，编译失败")
+            
+            return info
+            
+        except Exception as e:
+            self.logger.error(f"获取bin文件信息失败: {e}")
+            return {
+                'exists': False,
+                'path': '',
+                'size': 0,
+                'modified_time': None
+            }
     
     def build_and_check(self) -> Tuple[bool, str, dict]:
         """

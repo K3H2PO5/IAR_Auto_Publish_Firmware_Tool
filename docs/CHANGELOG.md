@@ -15,6 +15,24 @@ This project adheres to [Semantic Versioning](https://semver.org/lang/zh-CN/).
 - 添加配置文件模板 / Add configuration file templates
 - 改进错误处理 / Improve error handling
 
+## [1.0.3.7] - 2025-01-09
+
+### 修复 / Fixed
+- 修复IAR编译命令路径错误，使用正确的ewp文件路径而不是项目根目录 / Fixed IAR compilation command path error, use correct .ewp file path instead of project root directory
+- 修复bin文件查找逻辑，严格匹配ewp文件名对应的bin文件，避免选择错误的备份文件 / Fixed bin file finding logic, strictly match .ewp filename corresponding bin file, avoid selecting wrong backup files
+- 修复exe运行时配置文件路径问题，使用绝对路径确保配置文件正确加载 / Fixed exe runtime configuration file path issue, use absolute paths to ensure configuration files are loaded correctly
+- 修复项目路径和ewp文件路径混淆问题，确保路径变量正确分离 / Fixed project path and .ewp file path confusion issue, ensure path variables are correctly separated
+
+### 改进 / Improved
+- 改进编译命令构建逻辑，确保IAR编译器能正确识别项目文件 / Improved compilation command building logic, ensure IAR compiler can correctly identify project files
+- 改进bin文件查找策略，移除"查找最新文件"逻辑，采用严格文件名匹配 / Improved bin file finding strategy, removed "find latest file" logic, adopted strict filename matching
+- 改进错误处理，提供更详细的路径和文件存在性检查日志 / Improved error handling, provide more detailed path and file existence check logs
+- 改进配置管理，确保exe和源码版本都能正确加载配置文件 / Improved configuration management, ensure both exe and source code versions can correctly load configuration files
+
+### 移除 / Removed
+- 移除备份spec文件功能，简化PyInstaller构建过程 / Removed backup spec file functionality, simplified PyInstaller build process
+- 移除_find_latest_bin_file方法，采用更可靠的严格匹配策略 / Removed _find_latest_bin_file method, adopted more reliable strict matching strategy
+
 ## [1.0.3.6] - 2025-01-XX
 
 ### 新增 / Added
