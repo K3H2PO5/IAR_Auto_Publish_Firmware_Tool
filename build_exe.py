@@ -117,7 +117,6 @@ a = Analysis(
     binaries=[],
     datas=[
         ('user_config.example.json', '.'),
-        ('config.example.json', '.'),
         ('docs', 'docs'),
     ],
     hiddenimports=[],
@@ -242,7 +241,6 @@ def create_release_package(final_version):
     # Copy additional files
     additional_files = [
         "user_config.example.json",
-        "config.example.json",
         "README.md"
     ]
     
@@ -273,7 +271,6 @@ def create_release_package(final_version):
 ## Files
 - {exe_name}.exe - Main executable
 - user_config.example.json - Example user configuration
-- config.example.json - Example project configuration
 - docs/ - Documentation
 - README.md - Project readme
 

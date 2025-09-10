@@ -26,6 +26,9 @@ class InfoFileUpdater:
         
         # 版本号模式（每一位固定一位十进制数）
         self.version_pattern = r'V(\d)\.(\d)\.(\d)\.(\d)'
+        
+        # 从配置中获取版本变量名，默认为__Firmware_Version
+        self.version_var_name = config.get('firmware_version_keyword', '__Firmware_Version')
     
     def extract_version_from_info_file(self, info_file_path: str) -> Optional[str]:
         """
@@ -45,16 +48,22 @@ class InfoFileUpdater:
             with open(info_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # 查找 __Firmware_Version 定义
-            pattern = r'__root const char __Firmware_Version\[10\] = "([^"]+)"'
-            match = re.search(pattern, content)
+            # 查找版本变量定义（支持空格和注释）
+            # 先尝试匹配完整的pragma+变量定义模式
+            full_pattern = rf'#pragma\s+location\s*=\s*0x[0-9a-fA-F]+\s*\n\s*(?:/\*.*?\*/)?\s*(?://.*?\n)?\s*__root\s+const\s+char\s+{re.escape(self.version_var_name)}\s*\[\s*10\s*\]\s*=\s*"([^"]+)"'
+            match = re.search(full_pattern, content, re.MULTILINE | re.DOTALL)
+            
+            # 如果完整模式匹配失败，尝试简单的变量定义模式
+            if not match:
+                simple_pattern = rf'__root\s+const\s+char\s+{re.escape(self.version_var_name)}\s*\[\s*10\s*\]\s*=\s*"([^"]+)"'
+                match = re.search(simple_pattern, content)
             
             if match:
                 version = match.group(1)
                 self.logger.info(f"从信息文件提取到版本: {version}")
                 return version
             else:
-                self.logger.warning("在信息文件中未找到__Firmware_Version定义")
+                self.logger.warning(f"在信息文件中未找到{self.version_var_name}定义")
                 return None
                 
         except Exception as e:
@@ -101,11 +110,15 @@ class InfoFileUpdater:
             with open(info_file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
-            # 查找并替换版本号
-            pattern = r'(__root const char __Firmware_Version\[10\] = ")[^"]+(")'
-            replacement = f'\\g<1>{new_version}\\g<2>'
+            # 查找并替换版本号（支持空格和注释）
+            # 先尝试匹配完整的pragma+变量定义模式
+            full_pattern = rf'(#pragma\s+location\s*=\s*0x[0-9a-fA-F]+\s*\n\s*(?:/\*.*?\*/)?\s*(?://.*?\n)?\s*__root\s+const\s+char\s+{re.escape(self.version_var_name)}\s*\[\s*10\s*\]\s*=\s*")[^"]+(")'
+            new_content = re.sub(full_pattern, f'\\g<1>{new_version}\\g<2>', content, flags=re.MULTILINE | re.DOTALL)
             
-            new_content = re.sub(pattern, replacement, content)
+            # 如果完整模式没有匹配，尝试简单的变量定义模式
+            if new_content == content:
+                simple_pattern = rf'(__root\s+const\s+char\s+{re.escape(self.version_var_name)}\s*\[\s*10\s*\]\s*=\s*")[^"]+(")'
+                new_content = re.sub(simple_pattern, f'\\g<1>{new_version}\\g<2>', content)
             
             if new_content == content:
                 return False, "未找到版本号定义或版本号未发生变化"
@@ -159,7 +172,7 @@ class InfoFileUpdater:
                 lines = f.readlines()
             
             for i, line in enumerate(lines, 1):
-                if '__Firmware_Version' in line and '=' in line:
+                if self.version_var_name in line and '=' in line:
                     info['found'] = True
                     info['line_number'] = i
                     info['line_content'] = line.strip()
@@ -180,7 +193,7 @@ def test_info_file_updater():
     """测试信息文件更新器功能"""
     # 测试配置
     test_config = {
-        'version_pattern': r'V(\d)\.(\d)\.(\d)\.(\d)'
+        'firmware_version_keyword': '__Firmware_Version'
     }
     
     updater = InfoFileUpdater(test_config)
@@ -193,9 +206,17 @@ def test_info_file_updater():
         is_valid = updater.validate_version_format(version)
         print(f"版本号 {version}: {'有效' if is_valid else '无效'}")
     
-    # 测试版本号行信息提取
-    info_file_path = "../app/main.c"
-    if os.path.exists(info_file_path):
+    # 测试版本号行信息提取（动态查找包含版本变量的文件）
+    info_file_path = None
+    
+    # 使用PathManager查找包含版本变量的文件
+    from path_manager import PathManager
+    path_manager = PathManager(".")
+    # 使用默认文件名进行测试
+    info_file_path = path_manager.find_info_file("main.c")
+    
+    if info_file_path:
+        print(f"找到包含版本变量的文件: {info_file_path}")
         info = updater.get_version_line_info(info_file_path)
         print(f"版本号行信息: {info}")
         
@@ -203,7 +224,7 @@ def test_info_file_updater():
         current_version = updater.extract_version_from_info_file(info_file_path)
         print(f"当前版本: {current_version}")
     else:
-        print("信息文件不存在，跳过文件测试")
+        print("未找到包含版本变量的文件，跳过文件测试")
 
 
 if __name__ == "__main__":

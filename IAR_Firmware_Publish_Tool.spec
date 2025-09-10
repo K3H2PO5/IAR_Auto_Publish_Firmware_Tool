@@ -8,7 +8,6 @@ a = Analysis(
     binaries=[],
     datas=[
         ('user_config.example.json', '.'),
-        ('config.example.json', '.'),
         ('docs', 'docs'),
     ],
     hiddenimports=[],
@@ -31,7 +30,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='IAR_Firmware_Publish_Tool_v1.0.3.7',
+    name='IAR_Firmware_Publish_Tool_v1.0.4.0',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

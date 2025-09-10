@@ -5,7 +5,7 @@
 IAR固件发布工具 - 带GUI界面的Windows应用程序
 """
 
-__version__ = "1.0.3.7"
+__version__ = "1.0.4.0"
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
@@ -365,6 +365,9 @@ class MCUAutoBuildApp:
         self.config_analyzer = None
         self.tool_version_manager = ToolVersionManager()
         
+        # 缓存信息文件路径，避免重复查找
+        self.cached_info_file_path = None
+        
         # 设置窗口
         self.setup_window()
         
@@ -433,7 +436,7 @@ class MCUAutoBuildApp:
         """获取脚本所在目录，兼容exe和Python脚本环境"""
         if getattr(sys, 'frozen', False):
             # 如果是打包的exe，使用exe所在目录
-            return os.path.dirname(sys.executable)
+            return os.path.dirname(os.path.abspath(sys.executable))
         else:
             # 如果是Python脚本，使用脚本所在目录
             return os.path.dirname(os.path.abspath(__file__))
@@ -492,10 +495,14 @@ class MCUAutoBuildApp:
             
             # 自动查找配置文件
             if not self.config.get('binary_settings', {}).get('config_file'):
-                config_file = self.config_analyzer.find_config_file(project_path)
-                if config_file:
-                    self.config['config_file'] = config_file
-                    self.log_message(f"自动找到配置文件: {config_file}")
+                info_file_name = self.config.get('info_file', '')
+                if info_file_name:
+                    config_file, _ = self.get_info_file_path_with_details(project_path)
+                    if config_file:
+                        self.config['config_file'] = config_file
+                        self.log_message(f"自动找到配置文件: {config_file}")
+                else:
+                    self.log_message("未设置配置文件名称，跳过自动查找")
             
         except Exception as e:
             print(f"加载配置文件失败: {e}")
@@ -520,8 +527,17 @@ class MCUAutoBuildApp:
                     user_config[key] = default_value
                     self.log_message(f"为缺失的配置项 {key} 设置默认值: {default_value}")
             
+            # 保存当前的项目路径（如果已设置）
+            current_project_path = self.config.get('project_path', '')
+            
             # 直接合并用户配置到主配置
             self.config.update(user_config)
+            
+            # 如果当前项目路径已设置且不为空，优先使用当前设置的项目路径
+            if current_project_path and current_project_path.strip():
+                self.config['project_path'] = current_project_path
+                self.logger.info(f"保持当前项目路径设置: {current_project_path}")
+            
             self.log_message("用户配置合并成功")
         except Exception as e:
             self.log_message(f"合并用户配置失败: {e}")
@@ -563,11 +579,15 @@ class MCUAutoBuildApp:
     def _load_user_config_to_ui(self):
         """将用户配置加载到界面"""
         try:
-            # 加载项目路径
-            project_path = self.config.get('project_path', '')
-            if project_path:
-                self.project_path_var.set(project_path)
-                self.log_message(f"已加载项目路径: {project_path}")
+            # 加载项目路径（只有在界面还没有设置时才从配置文件加载）
+            current_ui_path = self.project_path_var.get()
+            if not current_ui_path or current_ui_path.strip() == '':
+                project_path = self.config.get('project_path', '')
+                if project_path:
+                    self.project_path_var.set(project_path)
+                    self.log_message(f"已加载项目路径: {project_path}")
+            else:
+                self.log_message(f"保持当前项目路径设置: {current_ui_path}")
             
             # 加载IAR路径并显示
             iar_path = self.config.get('iar_installation_path', '')
@@ -776,6 +796,7 @@ class MCUAutoBuildApp:
             )
             if directory:
                 self.project_path_var.set(directory)
+                self.clear_info_file_cache()  # 清除信息文件缓存
                 self.log_message(f"选择项目路径: {directory}")
                 
                 # 更新配置
@@ -829,59 +850,32 @@ class MCUAutoBuildApp:
         return ""
     
     
-    def analyze_config_file(self, config_file_path: str):
-        """分析配置文件"""
-        try:
-            if not self.config_analyzer:
-                self.config_analyzer = ConfigAnalyzer()
+    def get_info_file_path_with_details(self, project_path: str) -> tuple[Optional[str], str]:
+        """
+        获取信息文件路径，并返回详细的错误信息
+        
+        Args:
+            project_path: 项目路径
             
-            # 分析配置文件
-            feature_settings = {
-                'enable_git_commit_id': self.config.get('enable_git_commit_id', True),
-                'enable_file_size': self.config.get('enable_file_size', True),
-                'enable_bin_checksum': self.config.get('enable_bin_checksum', True),
-                'enable_hash_value': self.config.get('enable_hash_value', True),
-                'git_commit_id_keyword': self.config.get('git_commit_id_keyword', '__git_commit_id'),
-                'file_size_keyword': self.config.get('file_size_keyword', '__file_size'),
-                'bin_checksum_keyword': self.config.get('bin_checksum_keyword', '__bin_checksum'),
-                'hash_value_keyword': self.config.get('hash_value_keyword', '__hash_value'),
-                'firmware_version_keyword': self.config.get('firmware_version_keyword', '__Firmware_Version')
-            }
-            binary_config = self.config_analyzer.analyze_config_file(config_file_path, feature_settings)
-            self.log_message(f"ConfigAnalyzer分析结果: {binary_config}")
-            
-            # 更新配置
-            if 'binary_settings' not in self.config:
-                self.config = {}
-            
-            # 保存原有的bin_start_address
-            binary_settings = self.config.get('binary_settings', {})
-            original_bin_start_address = binary_settings.get('bin_start_address', 0)
-            
-            # 更新地址相关配置
-            self.config.update(binary_config)
-            self.config['config_file'] = config_file_path
-            
-            # 恢复bin_start_address到binary_settings
-            if original_bin_start_address != 0:
-                if 'binary_settings' not in self.config:
-                    self.config['binary_settings'] = {}
-                self.config['binary_settings']['bin_start_address'] = original_bin_start_address
-            
-            # 验证配置
-            is_valid, message = self.config_analyzer.validate_config(binary_config)
-            if is_valid:
-                self.log_message(f"配置文件分析成功: {message}")
-                self.log_message(f"__Firmware_Version地址: 0x{binary_config['firmware_version_offset']:X}")
-                self.log_message(f"__git_commit_id地址: 0x{binary_config['git_commit_id_offset']:X}")
-                self.log_message(f"__file_size地址: 0x{binary_config['file_size_offset']:X}")
-                self.log_message(f"__bin_checksum地址: 0x{binary_config['bin_checksum_offset']:X}")
-            else:
-                self.log_message(f"配置文件分析失败: {message}")
-                messagebox.showerror(self.get_text('msg_config_error'), f"{self.get_text('msg_config_file_analysis_failed')}:\n{message}\n\n{self.get_text('msg_check_config_file_pragma')}")
-                
-        except Exception as e:
-            self.log_message(f"分析配置文件失败: {e}")
+        Returns:
+            tuple: (文件路径, 错误信息)
+        """
+        if self.cached_info_file_path and os.path.exists(self.cached_info_file_path):
+            return self.cached_info_file_path, ""
+        
+        if not self.path_manager:
+            self.path_manager = PathManager(project_path)
+        
+        info_file_name = self.config.get('info_file', 'main.c')
+        file_path, error_msg = self.path_manager.find_info_file_with_details(info_file_name)
+        if file_path:
+            self.cached_info_file_path = file_path
+        return file_path, error_msg
+    
+    def clear_info_file_cache(self):
+        """清除信息文件路径缓存"""
+        self.cached_info_file_path = None
+    
     
     def save_config(self):
         """保存用户配置到文件"""
@@ -991,12 +985,11 @@ class MCUAutoBuildApp:
                     current_branch = git_info.get('branch')
                 
                 self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
-                self.info_file_updater = InfoFileUpdater(self.config.get('version_settings', {}))
+                self.info_file_updater = InfoFileUpdater(self.config)
                 
                 # 从信息文件中读取当前版本
-                main_file_relative = self._find_info_file(self.project_path_var.get())
-                if main_file_relative:
-                    main_file_path = os.path.join(self.project_path_var.get(), main_file_relative)
+                main_file_path, _ = self.get_info_file_path_with_details(self.project_path_var.get())
+                if main_file_path:
                     current_version = self.info_file_updater.extract_version_from_info_file(main_file_path)
                 else:
                     current_version = None
@@ -1070,11 +1063,9 @@ class MCUAutoBuildApp:
                 missing_configs.append("项目路径")
             else:
                 # 查找信息文件
-                info_file_path = self._find_config_file_path(project_path, info_file_name)
-                self.log_message(f"找到的信息文件路径: {info_file_path}")
-                if not info_file_path:
-                    missing_configs.append(f"未找到信息文件: {info_file_name}")
-                else:
+                info_file_path, error_msg = self.get_info_file_path_with_details(project_path)
+                if info_file_path:
+                    self.log_message(f"找到的信息文件路径: {info_file_path}")
                     # 尝试分析配置文件
                     if not self.config_analyzer:
                         self.config_analyzer = ConfigAnalyzer()
@@ -1105,13 +1096,33 @@ class MCUAutoBuildApp:
                             missing_configs.append("配置文件中的地址定义")
                     except Exception as e:
                         missing_configs.append(f"配置文件分析失败: {e}")
+                else:
+                    # 显示详细的错误信息
+                    self.log_message(error_msg)
+                    # 根据错误类型添加不同的错误信息
+                    if "找到多个信息文件" in error_msg:
+                        missing_configs.append("找到多个信息文件")
+                    elif "未找到信息文件" in error_msg:
+                        missing_configs.append("未找到信息文件")
+                    else:
+                        missing_configs.append("信息文件查找失败")
         
         if missing_configs:
             error_msg = f"编译配置不完整，缺少以下配置:\n{', '.join(missing_configs)}\n\n"
-            error_msg += "请点击'设置'按钮进行配置:\n"
-            error_msg += "1. 在'项目设置'中配置IAR安装目录和bin起始地址\n"
-            error_msg += "2. 在'项目设置'中选择信息文件（如main.c）\n"
-            error_msg += "3. 确保信息文件中包含正确的#pragma location定义"
+            error_msg += "请查看日志输出获取详细错误信息，然后点击'设置'按钮进行配置:\n"
+            
+            # 根据具体的错误类型提供针对性的建议
+            if "找到多个信息文件" in missing_configs:
+                error_msg += "1. 删除项目中的重复信息文件，只保留一个\n"
+                error_msg += "2. 建议保留源代码目录中的文件，删除构建系统生成的临时文件\n"
+                error_msg += "3. 在'项目设置'中指定具体的信息文件路径"
+            elif "未找到信息文件" in missing_configs:
+                error_msg += "1. 在'项目设置'中选择信息文件（如main.c）\n"
+                error_msg += "2. 确保信息文件中包含正确的#pragma location定义"
+            else:
+                error_msg += "1. 在'项目设置'中配置IAR安装目录和bin起始地址\n"
+                error_msg += "2. 在'项目设置'中选择信息文件（如main.c）\n"
+                error_msg += "3. 确保信息文件中包含正确的#pragma location定义"
             
             self.log_message(f"配置检查失败: {', '.join(missing_configs)}")
             messagebox.showerror(self.get_text('msg_config_incomplete'), error_msg)
@@ -1134,101 +1145,7 @@ class MCUAutoBuildApp:
             self.flash_start_addr_var.set("获取失败")
             self.log_message(f"获取Flash起始地址失败: {e}")
     
-    def _find_info_file(self, project_path: str) -> Optional[str]:
-        """
-        查找信息文件（支持多种扩展名：.c, .cpp, .cc, .h, .hpp）
-        
-        Args:
-            project_path: 项目路径
-            
-        Returns:
-            str: 信息文件相对路径，未找到返回None
-        """
-        # 首先尝试使用保存的信息文件名
-        saved_info_file = self.config.get('info_file', '')
-        if saved_info_file:
-            # 在项目路径中搜索该文件
-            search_paths = ['', 'app', 'src', 'source', 'inc', 'include']
-            for search_path in search_paths:
-                if search_path:
-                    full_path = os.path.join(project_path, search_path, saved_info_file)
-                    relative_path = os.path.join(search_path, saved_info_file)
-                else:
-                    full_path = os.path.join(project_path, saved_info_file)
-                    relative_path = saved_info_file
-                
-                if os.path.exists(full_path):
-                    self.log_message(f"使用保存的信息文件: {relative_path}")
-                    return relative_path
-            self.log_message(f"保存的信息文件不存在: {saved_info_file}，重新搜索...")
-        
-        # 支持的文件扩展名
-        extensions = ['.c', '.cpp', '.cc', '.h', '.hpp']
-        
-        # 可能的文件名
-        info_names = ['main', 'Main', 'MAIN']
-        
-        # 搜索路径（相对路径）
-        search_paths = [
-            '',  # 项目根目录
-            'app',
-            'src',
-            'source',
-            'Source',
-            'Src',
-            'inc',
-            'include',
-            'Include',
-            'Inc'
-        ]
-        
-        for search_path in search_paths:
-            for info_name in info_names:
-                for ext in extensions:
-                    # 构建文件路径
-                    if search_path:
-                        file_path = os.path.join(project_path, search_path, f"{info_name}{ext}")
-                        relative_path = os.path.join(search_path, f"{info_name}{ext}")
-                    else:
-                        file_path = os.path.join(project_path, f"{info_name}{ext}")
-                        relative_path = f"{info_name}{ext}"
-                    
-                    if os.path.exists(file_path):
-                        self.log_message(f"找到信息文件: {relative_path}")
-                        return relative_path
-        
-        self.log_message("未找到信息文件，请确保项目中有main.c/main.cpp/main.h等文件")
-        return None
     
-    def _find_config_file_path(self, project_path: str, config_file_name: str) -> Optional[str]:
-        """
-        在项目路径中查找配置文件
-        
-        Args:
-            project_path: 项目路径
-            config_file_name: 配置文件名
-            
-        Returns:
-            str: 配置文件的完整路径，未找到返回None
-        """
-        if not project_path or not os.path.exists(project_path) or not config_file_name:
-            return None
-        
-        # 搜索路径
-        search_paths = ['', 'app', 'src', 'source', 'inc', 'include']
-        
-        for search_path in search_paths:
-            if search_path:
-                full_path = os.path.join(project_path, search_path, config_file_name)
-            else:
-                full_path = os.path.join(project_path, config_file_name)
-            
-            if os.path.exists(full_path):
-                self.log_message(f"找到配置文件: {full_path}")
-                return full_path
-        
-        self.log_message(f"未找到配置文件: {config_file_name}")
-        return None
     
     def start_build(self):
         """开始编译流程"""
@@ -1274,10 +1191,9 @@ class MCUAutoBuildApp:
                     current_branch = git_info.get('branch')
                 
                 self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
-                self.info_file_updater = InfoFileUpdater(self.config.get('version_settings', {}))
-                main_file_relative = self._find_info_file(project_path)
-                if main_file_relative:
-                    main_file_path = os.path.join(project_path, main_file_relative)
+                self.info_file_updater = InfoFileUpdater(self.config)
+                main_file_path, _ = self.get_info_file_path_with_details(project_path)
+                if main_file_path:
                     current_version = self.info_file_updater.extract_version_from_info_file(main_file_path)
                 else:
                     current_version = None
@@ -1327,12 +1243,11 @@ class MCUAutoBuildApp:
                 version_updated = False
                 if current_version and next_version != current_version:
                     self.update_status("更新版本号...")
-                    main_file_relative = self._find_info_file(project_path)
-                    if main_file_relative:
-                        main_file_path = os.path.join(project_path, main_file_relative)
+                    main_file_path, error_msg = self.get_info_file_path_with_details(project_path)
+                    if main_file_path:
                         success, message = self.info_file_updater.update_version_in_info_file(main_file_path, next_version)
                     else:
-                        success, message = False, "未找到信息文件"
+                        success, message = False, f"未找到信息文件\n\n{error_msg}"
                     if success:
                         self.log_message(f"版本号更新成功: {message}")
                         version_updated = True
@@ -1732,7 +1647,14 @@ class MCUAutoBuildApp:
             
             file_path = filedialog.askopenfilename(
                 title="选择配置文件",
-                filetypes=[("C文件", "*.c"), ("头文件", "*.h"), ("所有文件", "*.*")],
+                filetypes=[
+                    ("C/C++源文件", "*.c;*.cpp;*.cc;*.cxx"),
+                    ("C/C++头文件", "*.h;*.hpp;*.hxx"),
+                    ("C文件", "*.c"),
+                    ("C++文件", "*.cpp;*.cc;*.cxx"),
+                    ("头文件", "*.h;*.hpp;*.hxx"),
+                    ("所有文件", "*.*")
+                ],
                 initialdir=initial_dir
             )
             if file_path:

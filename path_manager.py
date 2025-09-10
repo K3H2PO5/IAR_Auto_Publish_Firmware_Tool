@@ -23,11 +23,30 @@ class PathManager:
         Args:
             project_path: 项目根目录路径
         """
-        self.project_path = os.path.abspath(project_path) if project_path else os.getcwd()
+        if project_path:
+            self.project_path = os.path.abspath(project_path)
+        else:
+            # 不使用os.getcwd()，避免打包exe时的问题
+            # 默认使用空字符串，表示需要用户明确指定项目路径
+            self.project_path = ""
+            
         self.logger = logging.getLogger(__name__)
         self.iar_analyzer = IARProjectAnalyzer()
         
-        self.logger.info(f"项目根目录: {self.project_path}")
+        if self.project_path:
+            self.logger.info(f"项目根目录: {self.project_path}")
+        else:
+            self.logger.warning("未指定项目路径，请使用set_project_path()方法设置")
+    
+    def set_project_path(self, project_path: str) -> None:
+        """
+        设置项目路径
+        
+        Args:
+            project_path: 项目根目录路径
+        """
+        self.project_path = os.path.abspath(project_path)
+        self.logger.info(f"设置项目根目录: {self.project_path}")
     
     def find_iar_workspace(self, pattern: str = "*.eww") -> Optional[str]:
         """
@@ -159,51 +178,139 @@ class PathManager:
             self.logger.error(f"查找bin文件失败: {e}")
             return None
     
-    def find_main_c_file(self) -> Optional[str]:
+    def find_info_file(self, info_file_name: str) -> Optional[str]:
         """
-        查找main.c文件
+        在项目中查找指定的信息文件
+        
+        Args:
+            info_file_name: 要查找的具体文件名（包含扩展名），如"main.c"
         
         Returns:
-            str: 找到的main.c文件路径，未找到返回None
+            str: 找到的信息文件路径，未找到或找到多个则返回None
+            
+        Note:
+            搜索时会自动排除以下目录：
+            - .git (Git版本控制目录)
+            - .clion (CLion IDE配置目录)
+            - .idea (IntelliJ IDEA配置目录)
+            - cmake* (以cmake开头的构建目录)
         """
         try:
-            # 常见的main.c位置
-            search_paths = [
-                os.path.join(self.project_path, "app", "main.c"),
-                os.path.join(self.project_path, "src", "main.c"),
-                os.path.join(self.project_path, "main.c"),
-                os.path.join(self.project_path, "..", "app", "main.c"),
-                os.path.join(self.project_path, "..", "src", "main.c"),
-                os.path.join(self.project_path, "..", "main.c")
-            ]
+            # 检查项目路径是否已设置
+            if not self.project_path:
+                self.logger.error("项目路径未设置，无法查找信息文件")
+                return None
             
-            for main_c_path in search_paths:
-                if os.path.exists(main_c_path):
-                    self.logger.info(f"找到main.c文件: {main_c_path}")
-                    return main_c_path
+            if not info_file_name or not info_file_name.strip():
+                self.logger.error("信息文件名不能为空")
+                return None
             
-            # 如果直接路径找不到，尝试搜索
-            search_dirs = [
-                self.project_path,
-                os.path.join(self.project_path, ".."),
-                os.path.join(self.project_path, "..", "..")
-            ]
+            self.logger.info(f"在项目 {self.project_path} 中查找信息文件: {info_file_name}")
             
-            for search_dir in search_dirs:
-                if os.path.exists(search_dir):
-                    for root, dirs, files in os.walk(search_dir):
-                        for file in files:
-                            if file.lower() == "main.c":
-                                file_path = os.path.join(root, file)
-                                self.logger.info(f"找到main.c文件: {file_path}")
-                                return file_path
+            # 检查项目路径是否存在
+            if not os.path.exists(self.project_path):
+                self.logger.error(f"项目路径不存在: {self.project_path}")
+                return None
             
-            self.logger.warning(f"未找到main.c文件，搜索路径: {search_paths}")
-            return None
+            # 递归搜索文件
+            found_files = []
             
+            # 定义要排除的目录
+            excluded_dirs = {'.git', '.clion', '.idea'}
+            
+            for root, dirs, files in os.walk(self.project_path):
+                # 排除以cmake开头的目录和其他不相关目录
+                dirs[:] = [d for d in dirs if not (d in excluded_dirs or d.startswith('cmake'))]
+                
+                for file in files:
+                    if file == info_file_name:  # 精确匹配文件名
+                        file_path = os.path.join(root, file)
+                        found_files.append(file_path)
+            
+            if len(found_files) == 0:
+                self.logger.error(f"未找到信息文件: {info_file_name}")
+                self.logger.error(f"请检查：")
+                self.logger.error(f"1. 文件名是否正确（包括扩展名）")
+                self.logger.error(f"2. 文件是否存在于项目目录中")
+                self.logger.error(f"3. 在设置中正确配置信息文件名")
+                return None
+            elif len(found_files) == 1:
+                self.logger.info(f"找到信息文件: {found_files[0]}")
+                return found_files[0]
+            else:
+                self.logger.error(f"找到多个信息文件 ({len(found_files)}个): {info_file_name}")
+                self.logger.error(f"请删除多余的文件或在设置中指定具体的文件路径：")
+                for i, file_path in enumerate(found_files, 1):
+                    self.logger.error(f"  {i}. {file_path}")
+                self.logger.error(f"建议保留项目源代码中的文件，删除构建系统生成的临时文件")
+                return None
+                
         except Exception as e:
-            self.logger.error(f"查找main.c文件失败: {e}")
+            self.logger.error(f"查找信息文件失败: {e}")
             return None
+    
+    def find_info_file_with_details(self, info_file_name: str) -> tuple[Optional[str], str]:
+        """
+        在项目中查找指定的信息文件，并返回详细的错误信息
+        
+        Args:
+            info_file_name: 要查找的具体文件名（包含扩展名），如"main.c"
+        
+        Returns:
+            tuple: (文件路径, 错误信息)
+                - 如果找到唯一文件：返回 (文件路径, "")
+                - 如果未找到文件：返回 (None, 详细错误信息)
+                - 如果找到多个文件：返回 (None, 详细错误信息)
+        """
+        try:
+            # 检查项目路径是否已设置
+            if not self.project_path:
+                return None, "项目路径未设置，无法查找信息文件"
+            
+            if not info_file_name or not info_file_name.strip():
+                return None, "信息文件名不能为空"
+            
+            self.logger.info(f"在项目 {self.project_path} 中查找信息文件: {info_file_name}")
+            
+            # 检查项目路径是否存在
+            if not os.path.exists(self.project_path):
+                return None, f"项目路径不存在: {self.project_path}"
+            
+            # 递归搜索文件
+            found_files = []
+            
+            # 定义要排除的目录
+            excluded_dirs = {'.git', '.clion', '.idea'}
+            
+            for root, dirs, files in os.walk(self.project_path):
+                # 排除以cmake开头的目录和其他不相关目录
+                dirs[:] = [d for d in dirs if not (d in excluded_dirs or d.startswith('cmake'))]
+                
+                for file in files:
+                    if file == info_file_name:  # 精确匹配文件名
+                        file_path = os.path.join(root, file)
+                        found_files.append(file_path)
+            
+            if len(found_files) == 0:
+                error_msg = f"未找到信息文件: {info_file_name}\n请检查：\n1. 文件名是否正确（包括扩展名）\n2. 文件是否存在于项目目录中\n3. 在设置中正确配置信息文件名"
+                self.logger.error(error_msg)
+                return None, error_msg
+            elif len(found_files) == 1:
+                self.logger.info(f"找到信息文件: {found_files[0]}")
+                return found_files[0], ""
+            else:
+                error_msg = f"找到多个信息文件 ({len(found_files)}个): {info_file_name}\n请删除多余的文件或在设置中指定具体的文件路径：\n"
+                for i, file_path in enumerate(found_files, 1):
+                    error_msg += f"  {i}. {file_path}\n"
+                error_msg += "建议保留项目源代码中的文件，删除构建系统生成的临时文件"
+                self.logger.error(error_msg)
+                return None, error_msg
+                
+        except Exception as e:
+            error_msg = f"查找信息文件失败: {e}"
+            self.logger.error(error_msg)
+            return None, error_msg
+    
     
     def resolve_relative_path(self, relative_path: str) -> str:
         """
@@ -427,8 +534,21 @@ def test_path_manager():
     bin_file = manager.find_bin_file()
     print(f"Bin文件: {bin_file}")
     
-    main_c = manager.find_main_c_file()
-    print(f"Main.c文件: {main_c}")
+    # 测试新的find_info_file方法
+    print("测试find_info_file方法:")
+    # 使用默认文件名进行测试
+    source_file = manager.find_info_file("main.c")
+    print(f"项目信息文件: {source_file}")
+    
+    # 测试查找main.c文件
+    print("\n测试查找main.c文件:")
+    main_c = manager.find_info_file("main.c")
+    print(f"项目Main.c文件: {main_c}")
+    
+    # 测试查找特定文件
+    print("\n测试查找example_info.c:")
+    example_file = manager.find_info_file("example_info.c")
+    print(f"项目Example文件: {example_file}")
 
 
 if __name__ == "__main__":

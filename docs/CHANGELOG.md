@@ -15,6 +15,24 @@ This project adheres to [Semantic Versioning](https://semver.org/lang/zh-CN/).
 - 添加配置文件模板 / Add configuration file templates
 - 改进错误处理 / Improve error handling
 
+## [1.0.3.8] - 2025-01-09
+
+### 修复 / Fixed
+- 修复ICF文件解析问题，正确解析IlinkIcfFile节点中的$PROJ_DIR$宏 / Fixed ICF file parsing issue, correctly parse $PROJ_DIR$ macro in IlinkIcfFile node
+- 移除path_manager.py中硬编码的默认文件名，要求必须传入参数避免个人习惯影响 / Removed hardcoded default file names in path_manager.py, require parameters to avoid personal habits affecting others
+- 修复配置文件优先级问题，确保用户界面指定的项目路径优先于user_config.json中的设置 / Fixed configuration priority issue, ensure UI-specified project path takes precedence over user_config.json settings
+- 确保所有配置文件路径都使用相对路径，与主程序文件在同一目录 / Ensure all configuration file paths use relative paths, same directory as main program file
+- 移除os.getcwd()的使用，避免打包exe时的工作目录问题 / Removed os.getcwd() usage to avoid working directory issues when packaging exe
+- 移除ICF文件默认路径搜索逻辑，如果ewp文件中没有ICF文件引用则直接报错 / Removed ICF file default path search logic, directly report error if no ICF file reference found in .ewp file
+
+### 改进 / Improved
+- 优化代码结构，移除重复的配置文件 / Optimized code structure, removed duplicate configuration files
+- 改进错误处理，项目路径无效时直接报错而不是使用当前工作目录 / Improved error handling, directly report error when project path is invalid instead of using current working directory
+
+### 清理 / Cleanup
+- 删除重复的config.example.json文件，保留config.json作为实际配置文件 / Removed duplicate config.example.json files, kept config.json as actual configuration file
+- 修复build_exe.py中对已删除文件的引用，避免打包时出现文件找不到错误 / Fixed references to deleted files in build_exe.py to avoid file not found errors during packaging
+
 ## [1.0.3.7] - 2025-01-09
 
 ### 修复 / Fixed
@@ -22,12 +40,24 @@ This project adheres to [Semantic Versioning](https://semver.org/lang/zh-CN/).
 - 修复bin文件查找逻辑，严格匹配ewp文件名对应的bin文件，避免选择错误的备份文件 / Fixed bin file finding logic, strictly match .ewp filename corresponding bin file, avoid selecting wrong backup files
 - 修复exe运行时配置文件路径问题，使用绝对路径确保配置文件正确加载 / Fixed exe runtime configuration file path issue, use absolute paths to ensure configuration files are loaded correctly
 - 修复项目路径和ewp文件路径混淆问题，确保路径变量正确分离 / Fixed project path and .ewp file path confusion issue, ensure path variables are correctly separated
+- 修复配置文件选择对话框文件类型筛选，添加对C++文件(.cpp, .cc, .cxx, .hpp, .hxx)的支持 / Fixed configuration file selection dialog file type filter, added support for C++ files (.cpp, .cc, .cxx, .hpp, .hxx)
 
 ### 改进 / Improved
 - 改进编译命令构建逻辑，确保IAR编译器能正确识别项目文件 / Improved compilation command building logic, ensure IAR compiler can correctly identify project files
 - 改进bin文件查找策略，移除"查找最新文件"逻辑，采用严格文件名匹配 / Improved bin file finding strategy, removed "find latest file" logic, adopted strict filename matching
 - 改进错误处理，提供更详细的路径和文件存在性检查日志 / Improved error handling, provide more detailed path and file existence check logs
 - 改进配置管理，确保exe和源码版本都能正确加载配置文件 / Improved configuration management, ensure both exe and source code versions can correctly load configuration files
+- 优化配置结构，将版本变量名配置移至用户配置，统一使用firmware_version_keyword / Optimized configuration structure, moved version variable name configuration to user config, unified use of firmware_version_keyword
+- 改进版本号匹配正则表达式，支持不同数量的空格和注释（单行注释//、多行注释/* */） / Improved version number matching regex, support different amounts of spaces and comments (single-line //, multi-line /* */)
+- 修复路径管理中的硬编码问题，新增通用的find_info_file方法支持多种文件名和扩展名 / Fixed hardcoded paths in path management, added generic find_info_file method supporting multiple file names and extensions
+- 优化方法命名，明确区分工具路径和项目路径，避免混淆 / Optimized method naming, clearly distinguish between tool paths and project paths to avoid confusion
+- 修复PathManager初始化问题，移除os.getcwd()避免打包exe时的工作目录问题 / Fixed PathManager initialization issue, removed os.getcwd() to avoid working directory problems when packaging exe
+- 优化代码结构，移除main.py中重复的_find_info_file方法，统一使用PathManager的find_info_file方法 / Optimized code structure, removed duplicate _find_info_file method in main.py, unified use of PathManager's find_info_file method
+- 合并重复的文件查找方法，删除config_analyzer.py中的find_config_file方法，统一使用path_manager.find_info_file / Merged duplicate file search methods, removed find_config_file from config_analyzer.py, unified use of path_manager.find_info_file
+- 优化文件搜索性能，在find_info_file方法中排除.git、.clion、.idea和cmake开头的目录，避免搜索构建系统生成的临时文件 / Optimized file search performance, excluded .git, .clion, .idea and cmake* directories in find_info_file method to avoid searching build system generated temporary files
+- 改进错误信息显示，区分"未找到文件"和"找到多个文件"的情况，在找到多个文件时列出所有文件路径，提供更明确的错误提示 / Improved error message display, distinguish between "file not found" and "multiple files found" cases, list all file paths when multiple files are found, provide clearer error prompts
+- 修复错误信息前后矛盾的问题，统一使用find_info_file_with_details方法，避免重复搜索和矛盾的错误提示 / Fixed contradictory error messages, unified use of find_info_file_with_details method to avoid duplicate searches and conflicting error prompts
+- 优化弹窗错误信息显示，建议用户查看日志输出获取详细信息，避免弹窗信息过于冗长 / Optimized popup error message display, suggest users check log output for detailed information, avoid overly verbose popup messages
 
 ### 移除 / Removed
 - 移除备份spec文件功能，简化PyInstaller构建过程 / Removed backup spec file functionality, simplified PyInstaller build process

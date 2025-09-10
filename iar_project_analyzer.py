@@ -48,7 +48,10 @@ class IARProjectAnalyzer:
             
             # 查找ICF文件引用
             # IAR项目文件中的ICF文件通常在以下位置：
-            # <group><name>Linker files</name><file><name>xxx.icf</name></file></group>
+            # 1. <group><name>Linker files</name><file><name>xxx.icf</name></file></group>
+            # 2. <name>IlinkIcfFile</name><state>$PROJ_DIR$\xxx.icf</state>
+            
+            # 方法1: 在group中查找
             for group in root.findall('.//group'):
                 group_name = group.find('name')
                 if group_name is not None and 'linker' in group_name.text.lower():
@@ -69,11 +72,33 @@ class IARProjectAnalyzer:
                             })
                             self.logger.info(f"找到ICF文件: {full_path}")
             
-            # 如果没找到，尝试其他常见的ICF文件位置
+            # 方法2: 查找IlinkIcfFile配置
+            for name_elem in root.findall('.//name'):
+                if name_elem.text == 'IlinkIcfFile':
+                    # 找到对应的state元素
+                    parent = name_elem.getparent()
+                    if parent is not None:
+                        state_elem = parent.find('state')
+                        if state_elem is not None and state_elem.text:
+                            icf_file = state_elem.text
+                            # 处理$PROJ_DIR$宏
+                            if icf_file.startswith('$PROJ_DIR$'):
+                                icf_file = icf_file.replace('$PROJ_DIR$', result['project_dir'])
+                            elif not os.path.isabs(icf_file):
+                                icf_file = os.path.join(result['project_dir'], icf_file)
+                            
+                            result['icf_files'].append({
+                                'name': os.path.basename(icf_file),
+                                'path': icf_file,
+                                'exists': os.path.exists(icf_file)
+                            })
+                            self.logger.info(f"找到ICF文件: {icf_file}")
+                    break
+            
+            # 如果没找到ICF文件引用，直接报错
             if not result['icf_files']:
-                self.logger.warning("在项目文件中未找到ICF文件引用，尝试搜索常见位置")
-                icf_files = self._search_icf_files(result['project_dir'])
-                result['icf_files'] = icf_files
+                self.logger.error("在项目文件中未找到ICF文件引用，请检查项目配置")
+                return None
             
             return result
             
@@ -81,46 +106,6 @@ class IARProjectAnalyzer:
             self.logger.error(f"分析IAR项目文件失败: {e}")
             return None
     
-    def _search_icf_files(self, project_dir: str) -> list:
-        """
-        在项目目录中搜索ICF文件
-        
-        Args:
-            project_dir: 项目目录
-            
-        Returns:
-            list: ICF文件信息列表
-        """
-        icf_files = []
-        
-        # 常见的ICF文件搜索路径
-        search_paths = [
-            project_dir,
-            os.path.join(project_dir, 'EWARM'),
-            os.path.join(project_dir, 'linker'),
-            os.path.join(project_dir, 'ld'),
-            os.path.join(project_dir, '..', 'EWARM'),
-            os.path.join(project_dir, '..', 'linker'),
-            os.path.join(project_dir, '..', 'ld')
-        ]
-        
-        for search_path in search_paths:
-            if not os.path.exists(search_path):
-                continue
-            
-            # 递归搜索.icf文件
-            for root, dirs, files in os.walk(search_path):
-                for file in files:
-                    if file.lower().endswith('.icf'):
-                        full_path = os.path.join(root, file)
-                        icf_files.append({
-                            'name': file,
-                            'path': full_path,
-                            'exists': True
-                        })
-                        self.logger.info(f"搜索到ICF文件: {full_path}")
-        
-        return icf_files
     
     def analyze_icf_file(self, icf_path: str) -> Optional[Dict]:
         """

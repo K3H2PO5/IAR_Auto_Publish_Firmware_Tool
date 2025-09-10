@@ -179,52 +179,6 @@ class ConfigAnalyzer:
         return None
     
     
-    def find_config_file(self, project_path: str) -> Optional[str]:
-        """
-        查找配置文件
-        
-        Args:
-            project_path: 项目路径
-            
-        Returns:
-            str: 找到的配置文件路径，未找到返回None
-        """
-        # 常见的配置文件名
-        config_names = [
-            'binary_config.c',
-            'config.c',
-            'binary_info.c',
-            'firmware_info.c',
-            'version_info.c',
-            'binary_params.c'
-        ]
-        
-        # 搜索路径
-        search_paths = [
-            project_path,
-            os.path.join(project_path, 'src'),
-            os.path.join(project_path, 'app'),
-            os.path.join(project_path, 'inc'),
-            os.path.join(project_path, 'include'),
-            os.path.join(project_path, '..', 'src'),
-            os.path.join(project_path, '..', 'app'),
-            os.path.join(project_path, '..', 'inc'),
-            os.path.join(project_path, '..', 'include')
-        ]
-        
-        for search_path in search_paths:
-            if not os.path.exists(search_path):
-                continue
-            
-            for root, dirs, files in os.walk(search_path):
-                for file in files:
-                    if file.lower() in [name.lower() for name in config_names]:
-                        file_path = os.path.join(root, file)
-                        self.logger.info(f"找到配置文件: {file_path}")
-                        return file_path
-        
-        self.logger.warning("未找到配置文件")
-        return None
     
     def validate_config(self, config: Dict[str, int], feature_settings: Dict = None) -> Tuple[bool, str]:
         """
@@ -286,8 +240,10 @@ def test_config_analyzer():
     
     print("配置分析器测试")
     
-    # 测试查找配置文件
-    config_file = analyzer.find_config_file(".")
+    # 测试查找配置文件（使用PathManager）
+    from path_manager import PathManager
+    path_manager = PathManager(".")
+    config_file = path_manager.find_info_file("main.c")
     print(f"找到配置文件: {config_file}")
     
     if config_file:

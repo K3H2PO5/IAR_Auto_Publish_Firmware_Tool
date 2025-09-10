@@ -136,7 +136,8 @@ class FileManager:
         """
         try:
             if project_path is None:
-                project_path = os.getcwd()
+                self.logger.error("项目路径不能为空")
+                return "unknown"
             
             # 使用git命令获取当前分支
             kwargs = {
