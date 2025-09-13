@@ -8,12 +8,65 @@ Format based on [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),
 项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。  
 This project adheres to [Semantic Versioning](https://semver.org/lang/zh-CN/).
 
-## [未发布] / [Unreleased]
+## [1.0.4.2] - 2025-01-13
 
-### 计划中 / Planned
-- 支持更多IAR版本 / Support for more IAR versions
-- 添加配置文件模板 / Add configuration file templates
-- 改进错误处理 / Improve error handling
+### 重构 / Refactored
+- 统一工具版本号管理，将版本号集中存储到version.py文件中 / Unified tool version management by centralizing version numbers in version.py file
+- 简化tool_version_manager.py，移除复杂的异常处理和默认值逻辑 / Simplified tool_version_manager.py by removing complex exception handling and default value logic
+- 优化版本号更新机制，直接修改version.py文件而不是main.py / Optimized version update mechanism by directly modifying version.py instead of main.py
+- 删除main.py中的版本号定义，统一从version.py导入 / Removed version number definition from main.py, unified import from version.py
+- 增强版本号匹配模式，支持数量不定的空格和注释 / Enhanced version number matching pattern to support variable spaces and comments
+- 合并increment_tool_version.py到tool_version_manager.py，消除功能重复 / Merged increment_tool_version.py into tool_version_manager.py to eliminate functional duplication
+- 简化构建流程，统一版本管理接口 / Simplified build process with unified version management interface
+- 新增高级版本递增功能，支持进位和格式化 / Added advanced version increment functionality with carry-over and formatting support
+- 更新build_exe.py，直接使用ToolVersionManager进行版本管理 / Updated build_exe.py to directly use ToolVersionManager for version management
+
+### 修复 / Fixed
+- 修复语言切换后某些控件仍显示中文的问题，完善界面本地化 / Fixed issue where some controls still displayed Chinese after language switch, improved interface localization
+- 修复语言切换后勾选框文本不更新的问题，确保界面完全本地化 / Fixed issue where checkbox text didn't update after language switch, ensuring complete interface localization
+- 修复设置窗口中硬编码的中文标签，实现完全本地化 / Fixed hardcoded Chinese labels in settings window, achieving complete localization
+- 修复主界面编译配置相关硬编码中文，添加完整翻译支持 / Fixed hardcoded Chinese text for build configuration in main interface, added complete translation support
+- 修复进度条状态文本的硬编码中文，实现状态消息本地化 / Fixed hardcoded Chinese text for progress bar status, implemented status message localization
+
+### 优化 / Improved
+- 优化语言下拉框显示格式，显示友好的语言文本而不是语言代码 / Optimized language dropdown display format to show friendly language text instead of language codes
+- 优化语言切换时的窗口尺寸调整，确保英文界面使用合适的宽度 / Optimized window size adjustment during language switch, ensuring English interface uses appropriate width
+- 优化设置页面宽度，中文界面600px，英文界面670px / Optimized settings page width: 600px for Chinese interface, 670px for English interface
+- 优化语言切换机制，实现立即生效无需保存配置 / Optimized language switching mechanism for immediate effect without requiring configuration save
+- 优化界面布局，语言下拉框宽度调整为15个字符 / Optimized interface layout with language dropdown width adjusted to 15 characters
+
+### 新增功能 / New Features
+- 新增完整的三种语言支持（简体中文、繁体中文、英文） / Added complete three-language support (Simplified Chinese, Traditional Chinese, English)
+- 新增语言切换时的实时窗口尺寸调整功能 / Added real-time window size adjustment functionality during language switching
+- 新增所有界面元素的本地化翻译，包括状态消息、日志信息等 / Added localization translations for all interface elements including status messages and log information
+- 新增语言选项的友好显示格式，提升用户体验 / Added friendly display format for language options to improve user experience
+
+## [1.0.4.1] - 2025-01-13
+
+### 修复 / Fixed
+- 修复主界面IAR路径显示"未配置"的问题 / Fixed issue where IAR path displayed as "未配置" on main interface
+- 修复_load_user_config_to_ui方法中的变量作用域问题，确保project_path变量正确初始化 / Fixed variable scope issue in _load_user_config_to_ui method, ensure project_path variable is properly initialized
+- 修复项目切换时用户配置信息丢失的问题 / Fixed issue where user configuration was lost when switching projects
+- 简化save_config方法，只更新项目路径，保留用户的其他配置设置 / Simplified save_config method to only update project path while preserving other user settings
+- 优化配置保存逻辑，避免使用默认值覆盖用户设置 / Optimized configuration saving logic to avoid overwriting user settings with default values
+
+### 优化 / Improved
+- 优化CRC32计算算法，使用IEEE 802.3标准多项式，提高校验准确性 / Optimized CRC32 calculation algorithm using IEEE 802.3 standard polynomial for improved checksum accuracy
+- 改进文件CRC计算逻辑，支持分段计算并排除CRC值和hash值存储区域 / Improved file CRC calculation logic with segmented calculation excluding CRC and hash value storage regions
+- 优化二进制文件修改性能，减少内存占用和计算时间 / Optimized binary file modification performance, reduced memory usage and calculation time
+- 增强CRC计算错误处理，提供更详细的调试信息 / Enhanced CRC calculation error handling with more detailed debug information
+- 优化IAR项目文件(.ewp)解析功能，支持多配置项目自动识别 / Optimized IAR project file (.ewp) parsing functionality with automatic multi-configuration detection
+- 改进ICF文件解析算法，支持多种内存布局格式和$PROJ_DIR$宏解析 / Improved ICF file parsing algorithm supporting multiple memory layout formats and $PROJ_DIR$ macro resolution
+- 增强ewp文件XML解析性能，使用lxml库提升解析速度 / Enhanced ewp file XML parsing performance using lxml library for faster parsing
+- 优化编译输出文件查找逻辑，自动识别bin和out文件路径 / Optimized build output file discovery logic with automatic bin and out file path identification
+
+### 新增功能 / New Features
+- 增强ewp文件多配置支持，自动识别项目中的所有编译配置 / Enhanced ewp file multi-configuration support with automatic detection of all build configurations
+- 添加配置选择下拉框，支持用户选择不同的编译配置 / Added configuration selection dropdown supporting user selection of different build configurations
+- 实现一键执行功能，自动完成Git检查、版本检查、编译、文件处理等全流程 / Implemented one-click execution feature automatically completing Git check, version check, compilation, and file processing workflow
+- 优化配置切换体验，选择配置后自动更新相关路径和设置 / Optimized configuration switching experience with automatic path and settings update upon configuration selection
+- 添加配置刷新功能，支持动态检测项目配置变化 / Added configuration refresh functionality supporting dynamic detection of project configuration changes
+
 
 ## [1.0.3.8] - 2025-01-09
 

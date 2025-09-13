@@ -5,8 +5,6 @@
 IAR固件发布工具 - 带GUI界面的Windows应用程序
 """
 
-__version__ = "1.0.4.0"
-
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog
 import json
@@ -29,6 +27,7 @@ from info_file_updater import InfoFileUpdater
 from path_manager import PathManager
 from config_analyzer import ConfigAnalyzer
 from tool_version_manager import ToolVersionManager
+from version import VERSION
 
 # 语言配置
 LANGUAGES = {
@@ -127,10 +126,47 @@ LANGUAGES = {
             'release_note_title': 'Release Notes',
             'release_note_created': 'Release note文件已创建',
             'release_note_updated': 'Release note文件已更新',
+            'enabled': '启用',
+            'disabled': '未启用',
+            'bin_address_auto_note': '注意：bin起始地址现在从ICF文件自动获取，无需手动配置',
+            'build_configuration': '编译配置:',
+            'not_selected': '未选择',
+            'refresh_config': '刷新配置',
+            'no_valid_configs': '未找到有效配置',
+            'no_configs_found': '未找到有效的编译配置',
+            'refresh_config_failed': '刷新配置失败',
+            'invalid_project_path': '项目路径无效，无法刷新配置',
+            'config_parse_failed': '解析项目配置失败',
+            'no_project_file': '未找到项目文件',
+            'configs_found': '找到 {count} 个配置: {names}',
+            'current_selection': '当前选择: {name}',
+            'config_selected': '选择配置: {name}',
+            'output_directory': '输出目录: {dir}',
+            'debug_mode': 'Debug模式: {mode}',
+            'config_selection_failed': '配置选择失败',
+            'checking_git_status': '检查Git状态中...',
+            'not_git_repo_status': '当前目录不是Git仓库',
+            'has_uncommitted_changes': '检测到未提交的更改',
+            'git_workdir_clean': 'Git工作区干净，可以编译',
+            'git_check_complete': 'Git状态检查完成',
+            'checking_firmware_version': '检查固件版本中...',
+            'version_check_complete': '版本检查完成',
+            'start_build_process': '开始编译流程...',
+            'input_update_info': '输入更新信息...',
+            'committing_changes': '提交更改...',
+            'updating_version': '更新版本号...',
+            'updating_release_notes': '更新Release Notes...',
+            'committing_version_changes': '提交版本号更改和Release Notes...',
+            'compiling_project': '编译项目中...',
+            'modifying_binary': '修改二进制文件...',
+            'processing_files': '处理输出文件...',
+            'publishing_firmware': '发布固件...',
+            'publishing_remote': '发布到远程目录...',
+            'build_process_complete': '编译流程完成',
             'language_options': {
-                'zh_CN': '简体中文',
-                'zh_TW': '繁體中文',
-                'en_US': 'English'
+                'zh_CN': 'zh_CN 简体中文',
+                'zh_TW': 'zh_TW 繁體中文',
+                'en_US': 'en_US English'
             }
         }
     },
@@ -229,10 +265,47 @@ LANGUAGES = {
             'release_note_title': 'Release Notes',
             'release_note_created': 'Release note檔案已建立',
             'release_note_updated': 'Release note檔案已更新',
+            'enabled': '啟用',
+            'disabled': '未啟用',
+            'bin_address_auto_note': '注意：bin起始位址現在從ICF檔案自動獲取，無需手動配置',
+            'build_configuration': '編譯配置:',
+            'not_selected': '未選擇',
+            'refresh_config': '刷新配置',
+            'no_valid_configs': '未找到有效配置',
+            'no_configs_found': '未找到有效的編譯配置',
+            'refresh_config_failed': '刷新配置失敗',
+            'invalid_project_path': '項目路徑無效，無法刷新配置',
+            'config_parse_failed': '解析項目配置失敗',
+            'no_project_file': '未找到項目檔案',
+            'configs_found': '找到 {count} 個配置: {names}',
+            'current_selection': '當前選擇: {name}',
+            'config_selected': '選擇配置: {name}',
+            'output_directory': '輸出目錄: {dir}',
+            'debug_mode': 'Debug模式: {mode}',
+            'config_selection_failed': '配置選擇失敗',
+            'checking_git_status': '檢查Git狀態中...',
+            'not_git_repo_status': '當前目錄不是Git倉庫',
+            'has_uncommitted_changes': '檢測到未提交的更改',
+            'git_workdir_clean': 'Git工作區乾淨，可以編譯',
+            'git_check_complete': 'Git狀態檢查完成',
+            'checking_firmware_version': '檢查固件版本中...',
+            'version_check_complete': '版本檢查完成',
+            'start_build_process': '開始編譯流程...',
+            'input_update_info': '輸入更新資訊...',
+            'committing_changes': '提交更改...',
+            'updating_version': '更新版本號...',
+            'updating_release_notes': '更新Release Notes...',
+            'committing_version_changes': '提交版本號更改和Release Notes...',
+            'compiling_project': '編譯專案中...',
+            'modifying_binary': '修改二進制檔案...',
+            'processing_files': '處理輸出檔案...',
+            'publishing_firmware': '發布固件...',
+            'publishing_remote': '發布到遠程目錄...',
+            'build_process_complete': '編譯流程完成',
             'language_options': {
-                'zh_CN': '简体中文',
-                'zh_TW': '繁體中文',
-                'en_US': 'English'
+                'zh_CN': 'zh_CN 简体中文',
+                'zh_TW': 'zh_TW 繁體中文',
+                'en_US': 'en_US English'
             }
         }
     },
@@ -331,10 +404,47 @@ LANGUAGES = {
             'release_note_title': 'Release Notes',
             'release_note_created': 'Release note file created',
             'release_note_updated': 'Release note file updated',
+            'enabled': 'Enabled',
+            'disabled': 'Disabled',
+            'bin_address_auto_note': 'Note: Bin start address is now automatically obtained from ICF file, no manual configuration needed',
+            'build_configuration': 'Build Configuration:',
+            'not_selected': 'Not Selected',
+            'refresh_config': 'Refresh Config',
+            'no_valid_configs': 'No Valid Configs Found',
+            'no_configs_found': 'No Valid Build Configurations Found',
+            'refresh_config_failed': 'Refresh Config Failed',
+            'invalid_project_path': 'Invalid project path, cannot refresh configurations',
+            'config_parse_failed': 'Failed to parse project configurations',
+            'no_project_file': 'No Project File Found',
+            'configs_found': 'Found {count} configurations: {names}',
+            'current_selection': 'Current selection: {name}',
+            'config_selected': 'Configuration selected: {name}',
+            'output_directory': 'Output directory: {dir}',
+            'debug_mode': 'Debug mode: {mode}',
+            'config_selection_failed': 'Configuration selection failed',
+            'checking_git_status': 'Checking Git status...',
+            'not_git_repo_status': 'Current directory is not a Git repository',
+            'has_uncommitted_changes': 'Uncommitted changes detected',
+            'git_workdir_clean': 'Git working directory is clean, ready to build',
+            'git_check_complete': 'Git status check complete',
+            'checking_firmware_version': 'Checking firmware version...',
+            'version_check_complete': 'Version check complete',
+            'start_build_process': 'Starting build process...',
+            'input_update_info': 'Input update information...',
+            'committing_changes': 'Committing changes...',
+            'updating_version': 'Updating version...',
+            'updating_release_notes': 'Updating Release Notes...',
+            'committing_version_changes': 'Committing version changes and Release Notes...',
+            'compiling_project': 'Compiling project...',
+            'modifying_binary': 'Modifying binary file...',
+            'processing_files': 'Processing output files...',
+            'publishing_firmware': 'Publishing firmware...',
+            'publishing_remote': 'Publishing to remote directory...',
+            'build_process_complete': 'Build process complete',
             'language_options': {
-                'zh_CN': '简体中文',
-                'zh_TW': '繁體中文',
-                'en_US': 'English'
+                'zh_CN': 'zh_CN 简体中文',
+                'zh_TW': 'zh_TW 繁體中文',
+                'en_US': 'en_US English'
             }
         }
     }
@@ -367,6 +477,14 @@ class MCUAutoBuildApp:
         
         # 缓存信息文件路径，避免重复查找
         self.cached_info_file_path = None
+        
+        # 配置相关变量
+        self.available_configurations = []
+        self.selected_configuration = None
+        
+        # 操作成功标志位
+        self.git_status_checked = False
+        self.version_checked = False
         
         # 设置窗口
         self.setup_window()
@@ -409,16 +527,7 @@ class MCUAutoBuildApp:
     def setup_window(self):
         """设置主窗口"""
         # 获取工具版本
-        try:
-            tool_version_info = self.tool_version_manager.get_version_info()
-            tool_version = tool_version_info.get('version', '1.0.0.0')
-            if tool_version == '未知' or tool_version == '错误':
-                tool_version = '1.0.0.0'
-        except Exception as e:
-            self.log_message(f"获取工具版本失败: {e}")
-            tool_version = '1.0.0.0'
-        
-        self.root.title(f"{self.get_text('app_title')} v{tool_version}")
+        self.root.title(f"{self.get_text('app_title')} v{VERSION}")
         self.root.geometry("1000x700")
         self.root.minsize(800, 600)
         
@@ -467,7 +576,15 @@ class MCUAutoBuildApp:
                 self._merge_user_config(user_config)
                 self.log_message("用户配置文件加载成功")
             else:
-                self.log_message("用户配置文件不存在，将创建新的用户配置")
+                # 如果user_config.json不存在，使用user_config.example.json
+                example_config_path = os.path.join(script_dir, "user_config.example.json")
+                if os.path.exists(example_config_path):
+                    with open(example_config_path, 'r', encoding='utf-8') as f:
+                        user_config = json.load(f)
+                    self._merge_user_config(user_config)
+                    self.log_message("用户配置文件不存在，使用示例配置文件")
+                else:
+                    self.log_message("用户配置文件和示例配置文件都不存在，将创建新的用户配置")
                 self._create_user_config()
             
             # 优先加载语言设置（在界面创建之前）
@@ -498,9 +615,9 @@ class MCUAutoBuildApp:
                 info_file_name = self.config.get('info_file', '')
                 if info_file_name:
                     config_file, _ = self.get_info_file_path_with_details(project_path)
-                    if config_file:
-                        self.config['config_file'] = config_file
-                        self.log_message(f"自动找到配置文件: {config_file}")
+                if config_file:
+                    self.config['config_file'] = config_file
+                    self.log_message(f"自动找到配置文件: {config_file}")
                 else:
                     self.log_message("未设置配置文件名称，跳过自动查找")
             
@@ -581,11 +698,12 @@ class MCUAutoBuildApp:
         try:
             # 加载项目路径（只有在界面还没有设置时才从配置文件加载）
             current_ui_path = self.project_path_var.get()
+            project_path = ''
             if not current_ui_path or current_ui_path.strip() == '':
                 project_path = self.config.get('project_path', '')
-                if project_path:
-                    self.project_path_var.set(project_path)
-                    self.log_message(f"已加载项目路径: {project_path}")
+            if project_path:
+                self.project_path_var.set(project_path)
+                self.log_message(f"已加载项目路径: {project_path}")
             else:
                 self.log_message(f"保持当前项目路径设置: {current_ui_path}")
             
@@ -699,29 +817,38 @@ class MCUAutoBuildApp:
             row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
         ttk.Button(info_frame, text=self.get_text('browse'), command=self.browse_project_path).grid(row=0, column=2)
         
+        # 编译配置选择
+        ttk.Label(info_frame, text=self.get_text('build_configuration')).grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
+        self.configuration_var = tk.StringVar(value=self.get_text('not_selected'))
+        self.configuration_combo = ttk.Combobox(info_frame, textvariable=self.configuration_var, 
+                                              state="readonly", width=20)
+        self.configuration_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.configuration_combo.bind('<<ComboboxSelected>>', self.on_configuration_selected)
+        ttk.Button(info_frame, text=self.get_text('refresh_config'), command=self.refresh_configurations).grid(row=1, column=2)
+        
         # IAR路径
-        ttk.Label(info_frame, text=self.get_text('iar_path_display')).grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(info_frame, text=self.get_text('iar_path_display')).grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
         self.iar_path_display_var = tk.StringVar(value=self.get_text('not_configured'))
         iar_path_label = ttk.Label(info_frame, textvariable=self.iar_path_display_var, foreground="green")
-        iar_path_label.grid(row=1, column=1, sticky=(tk.W, tk.E))
+        iar_path_label.grid(row=2, column=1, sticky=(tk.W, tk.E))
         
         # Flash起始地址
-        ttk.Label(info_frame, text=self.get_text('flash_start_addr')).grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(info_frame, text=self.get_text('flash_start_addr')).grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
         self.flash_start_addr_var = tk.StringVar(value=self.get_text('not_checked'))
         ttk.Label(info_frame, textvariable=self.flash_start_addr_var, foreground="purple").grid(
-            row=2, column=1, sticky=tk.W)
-        
-        # Git状态
-        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
-        self.git_status_var = tk.StringVar(value=self.get_text('not_checked'))
-        ttk.Label(info_frame, textvariable=self.git_status_var, foreground="orange").grid(
             row=3, column=1, sticky=tk.W)
         
+        # Git状态
+        ttk.Label(info_frame, text=self.get_text('git_status')).grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
+        self.git_status_var = tk.StringVar(value=self.get_text('not_checked'))
+        ttk.Label(info_frame, textvariable=self.git_status_var, foreground="orange").grid(
+            row=4, column=1, sticky=tk.W)
+        
         # 固件版本
-        ttk.Label(info_frame, text=self.get_text('firmware_version')).grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(info_frame, text=self.get_text('firmware_version')).grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
         self.firmware_version_var = tk.StringVar(value=self.get_text('not_checked'))
         ttk.Label(info_frame, textvariable=self.firmware_version_var, foreground="blue").grid(
-            row=4, column=1, sticky=tk.W)
+            row=5, column=1, sticky=tk.W)
         
         # 操作按钮框架
         button_frame = ttk.Frame(main_frame)
@@ -751,7 +878,7 @@ class MCUAutoBuildApp:
         self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 状态栏
-        self.status_var = tk.StringVar(value="就绪")
+        self.status_var = tk.StringVar(value=self.get_text('status_ready'))
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN)
         status_bar.grid(row=8, column=0, columnspan=3, sticky=(tk.W, tk.E))
     
@@ -807,8 +934,11 @@ class MCUAutoBuildApp:
                 self.config = self.path_manager.auto_find_paths(self.config)
                 self.log_message("已重新搜索项目文件")
                 
+                # 刷新配置列表
+                self.refresh_configurations()
+                
                 # 自动获取flash偏移地址
-                flash_offset = self.path_manager.get_flash_offset_from_project()
+                flash_offset = self.path_manager.get_flash_offset_from_configuration(self.selected_configuration)
                 if flash_offset:
                     # 更新配置中的bin起始地址
                     if 'binary_settings' not in self.config:
@@ -880,20 +1010,18 @@ class MCUAutoBuildApp:
     def save_config(self):
         """保存用户配置到文件"""
         try:
-            # 创建用户配置
-            user_config = {
-                "iar_installation_path": self.config.get('iar_installation_path', ''),
-                    "project_path": self.project_path_var.get(),
-                "fw_publish_directory": self.config.get('fw_publish_directory', './fw_publish'),
-                "info_file": self.config.get('info_file', ''),
-                "language": self.current_language,
-                "enable_git_commit_id": self.config.get('enable_git_commit_id', True),
-                "enable_file_size": self.config.get('enable_file_size', True),
-                "enable_bin_checksum": self.config.get('enable_bin_checksum', True),
-                "git_commit_id_keyword": self.config.get('git_commit_id_keyword', '__git_commit_id'),
-                "file_size_keyword": self.config.get('file_size_keyword', '__file_size'),
-                "bin_checksum_keyword": self.config.get('bin_checksum_keyword', '__bin_checksum')
-            }
+            # 读取现有的用户配置文件
+            script_dir = self._get_script_dir()
+            user_config_path = os.path.join(script_dir, "user_config.json")
+            
+            if os.path.exists(user_config_path):
+                with open(user_config_path, 'r', encoding='utf-8') as f:
+                    user_config = json.load(f)
+            else:
+                user_config = {}
+            
+            # 只更新项目路径
+            user_config["project_path"] = self.project_path_var.get()
             
             # 保存信息文件文件名（只存储文件名，不存储路径）
             info_file_path = self.config.get('info_file', '')
@@ -918,7 +1046,7 @@ class MCUAutoBuildApp:
         """检查Git状态"""
         def check_thread():
             try:
-                self.update_status("检查Git状态中...")
+                self.update_status(self.get_text('checking_git_status'))
                 self.progress_bar.start()
                 
                 # 初始化Git管理器
@@ -939,17 +1067,17 @@ class MCUAutoBuildApp:
                 # 检查是否为Git仓库
                 if not self.git_manager.is_git_repo():
                     self.git_status_var.set("不是Git仓库")
-                    self.update_status("当前目录不是Git仓库")
+                    self.update_status(self.get_text('not_git_repo_status'))
                     return
                 
                 # 检查未提交更改
                 has_changes = self.git_manager.has_uncommitted_changes()
                 if has_changes:
                     self.git_status_var.set("有未提交更改")
-                    self.update_status("检测到未提交的更改")
+                    self.update_status(self.get_text('has_uncommitted_changes'))
                 else:
                     self.git_status_var.set("工作区干净")
-                    self.update_status("Git工作区干净，可以编译")
+                    self.update_status(self.get_text('git_workdir_clean'))
                 
                 # 获取commit信息
                 commit_info = self.git_manager.get_commit_info()
@@ -958,12 +1086,17 @@ class MCUAutoBuildApp:
                     self.log_message(f"分支: {commit_info['branch']}")
                     self.log_message(f"作者: {commit_info['author']}")
                 
+                # 设置Git状态检查成功标志位
+                self.git_status_checked = True
+                self.log_message("Git状态检查完成")
+                
             except Exception as e:
                 self.log_message(f"检查Git状态失败: {e}")
                 self.git_status_var.set("检查失败")
+                self.git_status_checked = False
             finally:
                 self.progress_bar.stop()
-                self.update_status("Git状态检查完成")
+                self.update_status(self.get_text('git_check_complete'))
         
         threading.Thread(target=check_thread, daemon=True).start()
     
@@ -971,7 +1104,7 @@ class MCUAutoBuildApp:
         """检查固件版本"""
         def check_thread():
             try:
-                self.update_status("检查固件版本中...")
+                self.update_status(self.get_text('checking_firmware_version'))
                 self.progress_bar.start()
                 
                 # 初始化版本管理器和main.c更新器
@@ -1020,14 +1153,20 @@ class MCUAutoBuildApp:
                 else:
                     self.log_message("没有已发布的固件")
                 
+                # 设置版本检查成功标志位
+                self.version_checked = True
+                self.log_message("版本检查完成")
+                
             except Exception as e:
                 self.log_message(f"检查版本失败: {e}")
                 self.firmware_version_var.set("检查失败")
+                self.version_checked = False
             finally:
                 self.progress_bar.stop()
-                self.update_status("版本检查完成")
+                self.update_status(self.get_text('version_check_complete'))
         
         threading.Thread(target=check_thread, daemon=True).start()
+    
     
     def _check_build_config(self):
         """检查编译配置是否完整"""
@@ -1049,6 +1188,14 @@ class MCUAutoBuildApp:
         if bin_start_address == 0:
             missing_configs.append("bin起始地址")
             self.log_message("警告: bin起始地址未设置，这可能导致编译失败")
+        
+        # 检查编译配置选择
+        if not self.selected_configuration:
+            missing_configs.append("编译配置选择")
+            self.log_message("错误: 未选择编译配置")
+        else:
+            self.log_message(f"选择的编译配置: {self.selected_configuration.get('name', 'N/A')}")
+            self.log_message(f"配置中的bin文件: {self.selected_configuration.get('bin_file', 'N/A')}")
         
         # 检查信息文件
         info_file_name = self.config.get('info_file', '')
@@ -1156,15 +1303,45 @@ class MCUAutoBuildApp:
                 if not self._check_build_config():
                     return
                 
-                self.update_status("开始编译流程...")
+                self.update_status(self.get_text('start_build_process'))
                 self.progress_bar.start()
                 
-                # 1. 检查Git状态
-                project_path = self.project_path_var.get()
-                self.git_manager = GitManager(project_path)
+                # 1. 检查Git状态（如果用户没有手动检查过）
+                if not self.git_status_checked:
+                    self.log_message("自动执行Git状态检查...")
+                    # 模拟点击Git状态检查按钮
+                    self.check_git_status()
+                    # 等待Git状态检查完成
+                    import time
+                    while not self.git_status_checked:
+                        time.sleep(0.1)  # 每100ms检查一次
+                    self.log_message("Git状态检查完成")
+                else:
+                    self.log_message("使用已完成的Git状态检查结果")
                 
-                # 重新初始化路径管理器并更新配置
-                self.path_manager = PathManager(project_path)
+                # 2. 检查版本（如果用户没有手动检查过）
+                if not self.version_checked:
+                    self.log_message("自动执行版本检查...")
+                    # 模拟点击版本检查按钮
+                    self.check_version()
+                    # 等待版本检查完成
+                    import time
+                    while not self.version_checked:
+                        time.sleep(0.1)  # 每100ms检查一次
+                    self.log_message("版本检查完成")
+                else:
+                    self.log_message("使用已完成的版本检查结果")
+                
+                # 3. 获取项目路径和初始化管理器
+                project_path = self.project_path_var.get()
+                
+                # 确保Git管理器已初始化
+                if not self.git_manager:
+                    self.git_manager = GitManager(project_path)
+                
+                # 确保路径管理器已初始化
+                if not self.path_manager:
+                    self.path_manager = PathManager(project_path)
                 self.config = self.path_manager.auto_find_paths(self.config)
                 
                 # 更新flash起始地址显示
@@ -1181,7 +1358,7 @@ class MCUAutoBuildApp:
                     messagebox.showerror(self.get_text('msg_error'), self.get_text('msg_not_git_repo'))
                     return
                 
-                # 2. 获取版本信息并自动更新
+                # 4. 获取版本信息（使用已检查的结果）
                 fw_publish_dir = self.config.get('fw_publish_directory', './fw_publish')
                 
                 # 获取当前git分支
@@ -1190,8 +1367,12 @@ class MCUAutoBuildApp:
                     git_info = self.git_manager.get_commit_info()
                     current_branch = git_info.get('branch')
                 
-                self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
-                self.info_file_updater = InfoFileUpdater(self.config)
+                # 确保版本管理器已初始化
+                if not self.version_manager:
+                    self.version_manager = VersionManager(self.config.get('version_settings', {}), project_path, fw_publish_dir, current_branch)
+                    self.info_file_updater = InfoFileUpdater(self.config)
+                
+                # 从已检查的结果中获取版本信息
                 main_file_path, _ = self.get_info_file_path_with_details(project_path)
                 if main_file_path:
                     current_version = self.info_file_updater.extract_version_from_info_file(main_file_path)
@@ -1215,7 +1396,7 @@ class MCUAutoBuildApp:
                 commit_message = ""  # 用于存储最终的提交信息
                 
                 # 总是显示Git提交信息输入弹窗，让用户输入更新信息
-                self.update_status("输入更新信息...")
+                self.update_status(self.get_text('input_update_info'))
                 default_message = f"发布{next_version}版本"
                 commit_message = self.show_git_commit_dialog(default_message)
                 
@@ -1230,7 +1411,7 @@ class MCUAutoBuildApp:
                 
                 # 如果有未提交的更改，进行Git提交
                 if has_changes:
-                    self.update_status("提交更改...")
+                    self.update_status(self.get_text('committing_changes'))
                     self.log_message(f"准备提交: {commit_message}")
                     if self.git_manager.commit_changes(commit_message):
                         self.log_message(f"Git提交成功: {commit_message}")
@@ -1242,7 +1423,7 @@ class MCUAutoBuildApp:
                 # 4. 如果版本号需要更新，更新信息文件
                 version_updated = False
                 if current_version and next_version != current_version:
-                    self.update_status("更新版本号...")
+                    self.update_status(self.get_text('updating_version'))
                     main_file_path, error_msg = self.get_info_file_path_with_details(project_path)
                     if main_file_path:
                         success, message = self.info_file_updater.update_version_in_info_file(main_file_path, next_version)
@@ -1257,12 +1438,12 @@ class MCUAutoBuildApp:
                         next_version = current_version
                 
                 # 5. 创建或更新Release Note（无论版本号是否更新都执行）
-                self.update_status("更新Release Notes...")
+                self.update_status(self.get_text('updating_release_notes'))
                 self.create_or_update_release_note(next_version, commit_message)
                 
                 # 6. 如果有未提交的更改（包括版本号更新和Release Note），再次提交
                 if self.git_manager.has_uncommitted_changes():
-                    self.update_status("提交版本号更改和Release Notes...")
+                    self.update_status(self.get_text('committing_version_changes'))
                     # 使用相同的提交信息，或者如果用户之前取消了，则使用默认信息
                     if not commit_message:
                         commit_message = f"发布{next_version}版本"
@@ -1290,10 +1471,10 @@ class MCUAutoBuildApp:
                 self.log_message(f"使用commit ID: {commit_id}")
                 
                 # 9. 初始化IAR编译器
-                self.iar_builder = IARBuilder(self.config)
+                self.iar_builder = IARBuilder(self.config, self.selected_configuration)
                 
                 # 10. 智能编译项目
-                self.update_status("编译项目中...")
+                self.update_status(self.get_text('compiling_project'))
                 # 记录编译开始时间
                 compile_start_time = datetime.now()
                 # 判断是否只有版本号变化
@@ -1308,7 +1489,7 @@ class MCUAutoBuildApp:
                     return
                 
                 # 获取bin文件信息
-                bin_info = self.iar_builder.get_bin_file_info()
+                bin_info = self.iar_builder.get_bin_file_info(self.selected_configuration)
                 
                 if not bin_info['exists']:
                     messagebox.showerror(self.get_text('msg_compile_failed'), self.get_text('msg_compile_success_no_bin'))
@@ -1317,7 +1498,7 @@ class MCUAutoBuildApp:
                 self.log_message("编译成功")
                 
                 # 11. 修改二进制文件
-                self.update_status("修改二进制文件...")
+                self.update_status(self.get_text('modifying_binary'))
                 feature_settings = {
                     'enable_git_commit_id': self.config.get('enable_git_commit_id', True),
                     'enable_file_size': self.config.get('enable_file_size', True),
@@ -1353,8 +1534,8 @@ class MCUAutoBuildApp:
                 self.log_message(f"修改详情: {message}")
                 
                 # 12. 处理文件
-                self.update_status("处理输出文件...")
-                self.file_manager = FileManager(self.config, project_path)
+                self.update_status(self.get_text('processing_files'))
+                self.file_manager = FileManager(self.config, project_path, self.path_manager)
                 
                 success, message, file_info = self.file_manager.process_bin_file(
                     bin_info['path'], commit_id, version=next_version)
@@ -1366,13 +1547,13 @@ class MCUAutoBuildApp:
                 self.log_message("文件处理成功")
                 
                 # 13. 发布固件到fw_publish目录
-                self.update_status("发布固件...")
+                self.update_status(self.get_text('publishing_firmware'))
                 try:
                     add_timestamp = self.config.get('add_timestamp_to_filename', False)
                     publish_out_file = self.config.get('publish_out_file', False)
                     success, message, publish_info = self.file_manager.publish_firmware(
                         bin_info['path'], commit_id, next_version, add_timestamp=add_timestamp, 
-                        publish_out_file=publish_out_file)
+                        publish_out_file=publish_out_file, configuration=self.selected_configuration)
                     
                     if not success:
                         self.log_message(f"固件发布失败: {message}")
@@ -1388,7 +1569,7 @@ class MCUAutoBuildApp:
                     self.log_message(f"检查远程发布配置: 启用={enable_remote_publish}, 目录='{remote_publish_dir}'")
                     
                     if enable_remote_publish and remote_publish_dir:
-                        self.update_status("发布到远程目录...")
+                        self.update_status(self.get_text('publishing_remote'))
                         try:
                             # 获取当前分支名称
                             git_info = self.git_manager.get_commit_info()
@@ -1414,7 +1595,8 @@ class MCUAutoBuildApp:
                             # 发布到远程目录
                             publish_out_file = self.config.get('publish_out_file', False)
                             remote_success, remote_message, remote_info = self.file_manager.publish_to_remote(
-                                renamed_bin_path, release_note_path, branch_name, publish_out_file)
+                                renamed_bin_path, release_note_path, branch_name, publish_out_file, 
+                                configuration=self.selected_configuration)
                             
                             if remote_success:
                                 self.log_message("远程发布成功")
@@ -1433,7 +1615,7 @@ class MCUAutoBuildApp:
                     return
                 
                 # 15. 完成
-                self.update_status("编译流程完成")
+                self.update_status(self.get_text('build_process_complete'))
                 # 计算编译时间
                 compile_end_time = datetime.now()
                 compile_duration = compile_end_time - compile_start_time
@@ -1447,6 +1629,10 @@ class MCUAutoBuildApp:
                 messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_compile_exception')}: {e}")
             finally:
                 self.progress_bar.stop()
+                # 编译完成后重置标志位，准备下一轮循环
+                self.git_status_checked = False
+                self.version_checked = False
+                self.log_message("标志位已重置，准备下一轮编译")
         
         threading.Thread(target=build_thread, daemon=True).start()
     
@@ -1455,20 +1641,47 @@ class MCUAutoBuildApp:
         """打开固件发布目录"""
         try:
             fw_publish_dir = self.config.get('fw_publish_directory', './fw_publish')
+            
+            # 使用与FileManager相同的路径解析逻辑
+            project_path = self.project_path_var.get()
+            if project_path:
+                project_root = os.path.abspath(project_path)
+            else:
+                # 如果没有提供项目路径，使用工具目录的上级目录作为默认值
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+            if os.path.isabs(fw_publish_dir):
+                # 如果是绝对路径，直接使用
+                fw_publish_dir = os.path.abspath(fw_publish_dir)
+            else:
+                # 如果是相对路径，基于项目根目录解析
+                fw_publish_dir = os.path.join(project_root, fw_publish_dir)
+                fw_publish_dir = os.path.abspath(fw_publish_dir)
+            
+            self.logger.info(f"尝试打开固件发布目录: {fw_publish_dir}")
+            
             if os.path.exists(fw_publish_dir):
                 os.startfile(fw_publish_dir)
+                self.logger.info(f"成功打开固件发布目录: {fw_publish_dir}")
             else:
-                messagebox.showwarning(self.get_text('msg_warning'), self.get_text('msg_firmware_directory_not_exist'))
+                self.logger.warning(f"固件发布目录不存在: {fw_publish_dir}")
+                # 尝试创建目录
+                try:
+                    os.makedirs(fw_publish_dir, exist_ok=True)
+                    self.logger.info(f"已创建固件发布目录: {fw_publish_dir}")
+                    os.startfile(fw_publish_dir)
+                    self.logger.info(f"成功打开固件发布目录: {fw_publish_dir}")
+                except Exception as create_error:
+                    self.logger.error(f"创建固件发布目录失败: {create_error}")
+                    messagebox.showwarning(self.get_text('msg_warning'), f"固件发布目录不存在且无法创建:\n{fw_publish_dir}\n\n错误: {create_error}")
         except Exception as e:
+            self.logger.error(f"打开固件发布目录失败: {e}")
             messagebox.showerror(self.get_text('msg_error'), f"{self.get_text('msg_open_firmware_directory_failed')}: {e}")
     
     def open_settings(self):
         """打开设置窗口"""
         settings_window = tk.Toplevel(self.root)
         settings_window.title(self.get_text('settings_title'))
-        settings_window.geometry("600x550")
-        settings_window.resizable(True, True)
-        
         # 使设置窗口居中
         settings_window.transient(self.root)
         settings_window.grab_set()
@@ -1536,50 +1749,60 @@ class MCUAutoBuildApp:
         row += 1
         
         # Git提交ID变量名称
-        ttk.Label(main_frame, text="Git提交ID变量名称:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text=self.get_text('git_commit_id_keyword')).grid(row=row, column=0, sticky=tk.W, pady=5)
         self.settings_git_commit_id_keyword_var = tk.StringVar(value=self.config.get('git_commit_id_keyword', '__git_commit_id'))
         ttk.Entry(main_frame, textvariable=self.settings_git_commit_id_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
         self.settings_enable_git_commit_id_var = tk.BooleanVar(value=self.config.get('enable_git_commit_id', True))
-        self.git_commit_id_checkbox = ttk.Checkbutton(main_frame, text="启用", variable=self.settings_enable_git_commit_id_var, command=lambda: self.update_checkbox_text(self.git_commit_id_checkbox, self.settings_enable_git_commit_id_var))
+        self.git_commit_id_checkbox = ttk.Checkbutton(main_frame, text=self.get_text('enabled'), variable=self.settings_enable_git_commit_id_var, command=lambda: self.update_checkbox_text(self.git_commit_id_checkbox, self.settings_enable_git_commit_id_var))
         self.git_commit_id_checkbox.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
         row += 1
         
         # 文件大小变量名称
-        ttk.Label(main_frame, text="文件大小变量名称:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text=self.get_text('file_size_keyword')).grid(row=row, column=0, sticky=tk.W, pady=5)
         self.settings_file_size_keyword_var = tk.StringVar(value=self.config.get('file_size_keyword', '__file_size'))
         ttk.Entry(main_frame, textvariable=self.settings_file_size_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
         self.settings_enable_file_size_var = tk.BooleanVar(value=self.config.get('enable_file_size', True))
-        self.file_size_checkbox = ttk.Checkbutton(main_frame, text="启用", variable=self.settings_enable_file_size_var, command=lambda: self.update_checkbox_text(self.file_size_checkbox, self.settings_enable_file_size_var))
+        self.file_size_checkbox = ttk.Checkbutton(main_frame, text=self.get_text('enabled'), variable=self.settings_enable_file_size_var, command=lambda: self.update_checkbox_text(self.file_size_checkbox, self.settings_enable_file_size_var))
         self.file_size_checkbox.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
         row += 1
         
         # 二进制校验和变量名称
-        ttk.Label(main_frame, text="二进制校验和变量名称:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text=self.get_text('bin_checksum_keyword')).grid(row=row, column=0, sticky=tk.W, pady=5)
         self.settings_bin_checksum_keyword_var = tk.StringVar(value=self.config.get('bin_checksum_keyword', '__bin_checksum'))
         ttk.Entry(main_frame, textvariable=self.settings_bin_checksum_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
         self.settings_enable_bin_checksum_var = tk.BooleanVar(value=self.config.get('enable_bin_checksum', True))
-        self.bin_checksum_checkbox = ttk.Checkbutton(main_frame, text="启用", variable=self.settings_enable_bin_checksum_var, command=lambda: self.update_checkbox_text(self.bin_checksum_checkbox, self.settings_enable_bin_checksum_var))
+        self.bin_checksum_checkbox = ttk.Checkbutton(main_frame, text=self.get_text('enabled'), variable=self.settings_enable_bin_checksum_var, command=lambda: self.update_checkbox_text(self.bin_checksum_checkbox, self.settings_enable_bin_checksum_var))
         self.bin_checksum_checkbox.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
         row += 1
         
         # 哈希校验和功能开关和变量名称
-        ttk.Label(main_frame, text="哈希校验和变量名称:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text=self.get_text('hash_value_keyword')).grid(row=row, column=0, sticky=tk.W, pady=5)
         self.settings_hash_value_keyword_var = tk.StringVar(value=self.config.get('hash_value_keyword', '__hash_value'))
         ttk.Entry(main_frame, textvariable=self.settings_hash_value_keyword_var, width=20).grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
         self.settings_enable_hash_value_var = tk.BooleanVar(value=self.config.get('enable_hash_value', True))
-        self.hash_value_checkbox = ttk.Checkbutton(main_frame, text="启用", variable=self.settings_enable_hash_value_var, command=lambda: self.update_checkbox_text(self.hash_value_checkbox, self.settings_enable_hash_value_var))
+        self.hash_value_checkbox = ttk.Checkbutton(main_frame, text=self.get_text('enabled'), variable=self.settings_enable_hash_value_var, command=lambda: self.update_checkbox_text(self.hash_value_checkbox, self.settings_enable_hash_value_var))
         self.hash_value_checkbox.grid(row=row, column=2, sticky=tk.W, padx=(10, 0), pady=5)
         row += 1
         
         # 说明文本
-        ttk.Label(main_frame, text="注意：bin起始地址现在从ICF文件自动获取，无需手动配置", foreground="gray").grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        ttk.Label(main_frame, text=self.get_text('bin_address_auto_note'), foreground="gray").grid(row=row, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
         row += 1
         
         # 语言设置单独一行
         ttk.Label(main_frame, text=self.get_text('language')).grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.settings_language_var = tk.StringVar(value=self.current_language)
+        
+        # 创建语言选项列表，显示友好的文本
+        language_options = []
+        current_display_text = ""
+        for lang_code, lang_display in self.get_text('language_options').items():
+            display_text = lang_display  # 直接使用显示文本，不重复语言代码
+            language_options.append(display_text)
+            if lang_code == self.current_language:
+                current_display_text = display_text
+        
+        self.settings_language_var = tk.StringVar(value=current_display_text)
         language_combo = ttk.Combobox(main_frame, textvariable=self.settings_language_var, 
-                                    values=list(LANGUAGES.keys()), state="readonly", width=15)
+                                    values=language_options, state="readonly", width=15)
         language_combo.grid(row=row, column=1, sticky=tk.W, padx=(10, 0), pady=5)
         language_combo.bind('<<ComboboxSelected>>', lambda e: self.on_language_changed(settings_window))
         row += 1
@@ -1593,36 +1816,63 @@ class MCUAutoBuildApp:
         self.update_checkbox_text(self.file_size_checkbox, self.settings_enable_file_size_var)
         self.update_checkbox_text(self.bin_checksum_checkbox, self.settings_enable_bin_checksum_var)
         self.update_checkbox_text(self.hash_value_checkbox, self.settings_enable_hash_value_var)
+        
+        # 使用after方法延迟设置窗口尺寸，确保窗口完全创建后再调整
+        def set_window_size():
+            if self.current_language == 'en_US':
+                settings_window.geometry("670x550")
+            else:
+                settings_window.geometry("600x550")
+            # 强制刷新窗口以确保几何尺寸生效
+            settings_window.update_idletasks()
+            settings_window.update()
+        
+        # 延迟100毫秒后设置尺寸
+        settings_window.after(100, set_window_size)
     
     def update_checkbox_text(self, checkbox, var):
         """更新勾选框的文本显示"""
         if var.get():
-            checkbox.config(text="启用")
+            checkbox.config(text=self.get_text('enabled'))
         else:
-            checkbox.config(text="未启用")
+            checkbox.config(text=self.get_text('disabled'))
     
     def on_language_changed(self, settings_window):
         """语言切换回调函数"""
-        new_language = self.settings_language_var.get()
-        if new_language != self.current_language:
+        selected_display_text = self.settings_language_var.get()
+        # 根据显示文本找到对应的语言代码
+        new_language = None
+        for lang_code, lang_display in self.get_text('language_options').items():
+            if lang_display == selected_display_text:
+                new_language = lang_code
+                break
+        
+        if new_language and new_language != self.current_language:
             self.set_language(new_language)
+            
+            # 先调整当前窗口尺寸
+            if new_language == 'en_US':
+                settings_window.geometry("670x550")
+                settings_window.wm_geometry("670x550")  # 使用wm_geometry作为备选
+            else:
+                settings_window.geometry("600x550")
+                settings_window.wm_geometry("600x550")  # 使用wm_geometry作为备选
+            
             # 重新创建整个界面以应用新语言
             settings_window.destroy()
             self.refresh_ui()
             self.open_settings()
+            # 重新更新勾选框文本
+            if hasattr(self, 'git_commit_id_checkbox'):
+                self.update_checkbox_text(self.git_commit_id_checkbox, self.settings_enable_git_commit_id_var)
+                self.update_checkbox_text(self.file_size_checkbox, self.settings_enable_file_size_var)
+                self.update_checkbox_text(self.bin_checksum_checkbox, self.settings_enable_bin_checksum_var)
+                self.update_checkbox_text(self.hash_value_checkbox, self.settings_enable_hash_value_var)
     
     def refresh_ui(self):
         """刷新UI界面"""
         # 更新窗口标题
-        try:
-            tool_version_info = self.tool_version_manager.get_version_info()
-            tool_version = tool_version_info.get('version', '1.0.0.0')
-            if tool_version == '未知' or tool_version == '错误':
-                tool_version = '1.0.0.0'
-        except Exception:
-            tool_version = '1.0.0.0'
-        
-        self.root.title(f"{self.get_text('app_title')} v{tool_version}")
+        self.root.title(f"{self.get_text('app_title')} v{VERSION}")
         
         # 重新创建所有组件
         for widget in self.root.winfo_children():
@@ -1728,7 +1978,7 @@ class MCUAutoBuildApp:
             self.log_message("正在从IAR项目文件自动获取flash偏移地址...")
             
             # 使用PathManager获取flash偏移地址
-            flash_offset = self.path_manager.get_flash_offset_from_project()
+            flash_offset = self.path_manager.get_flash_offset_from_configuration(self.selected_configuration)
             
             if flash_offset:
                 # 更新界面显示
@@ -1804,7 +2054,9 @@ class MCUAutoBuildApp:
                 "file_size_keyword": self.config.get('file_size_keyword', '__file_size'),
                 "bin_checksum_keyword": self.config.get('bin_checksum_keyword', '__bin_checksum'),
                 "hash_value_keyword": self.config.get('hash_value_keyword', '__hash_value'),
-                "firmware_version_keyword": self.config.get('firmware_version_keyword', '__Firmware_Version')
+                "firmware_version_keyword": self.config.get('firmware_version_keyword', '__Firmware_Version'),
+                "add_timestamp_to_filename": self.config.get('add_timestamp_to_filename', True),
+                "publish_out_file": self.config.get('publish_out_file', False)
             }
             
             # 保存到用户配置文件
@@ -2162,6 +2414,73 @@ class MCUAutoBuildApp:
         """运行应用程序"""
         self.log_message("MCU自动编译工具启动")
         self.root.mainloop()
+    
+    def refresh_configurations(self):
+        """刷新编译配置列表"""
+        try:
+            project_path = self.project_path_var.get()
+            if not project_path or not os.path.exists(project_path):
+                self.log_message(self.get_text('invalid_project_path'))
+                return
+            
+            # 查找ewp文件
+            ewp_files = []
+            for root, dirs, files in os.walk(project_path):
+                for file in files:
+                    if file.endswith('.ewp'):
+                        ewp_files.append(os.path.join(root, file))
+            
+            if not ewp_files:
+                self.log_message("未找到IAR项目文件(.ewp)")
+                self.available_configurations = []
+                self.configuration_combo['values'] = []
+                self.configuration_var.set("未找到项目文件")
+                return
+            
+            # 解析第一个ewp文件（通常只有一个）
+            ewp_file = ewp_files[0]
+            from iar_project_analyzer import IARProjectAnalyzer
+            analyzer = IARProjectAnalyzer()
+            result = analyzer.analyze_ewp_file(ewp_file)
+            
+            if result and result.get('configurations'):
+                self.available_configurations = result['configurations']
+                config_names = [config['name'] for config in self.available_configurations]
+                self.configuration_combo['values'] = config_names
+                
+                if config_names:
+                    # 默认选择第一个配置
+                    self.configuration_var.set(config_names[0])
+                    self.selected_configuration = self.available_configurations[0]
+                    self.log_message(self.get_text('configs_found').format(count=len(config_names), names=', '.join(config_names)))
+                    self.log_message(self.get_text('current_selection').format(name=config_names[0]))
+                else:
+                    self.configuration_var.set(self.get_text('no_valid_configs'))
+                    self.log_message(self.get_text('no_configs_found'))
+            else:
+                self.available_configurations = []
+                self.configuration_combo['values'] = []
+                self.configuration_var.set(self.get_text('config_parse_failed'))
+                self.log_message(self.get_text('config_parse_failed'))
+                
+        except Exception as e:
+            self.log_message(f"{self.get_text('refresh_config_failed')}: {e}")
+    
+    def on_configuration_selected(self, event):
+        """配置选择事件处理"""
+        try:
+            selected_name = self.configuration_var.get()
+            if selected_name and selected_name != self.get_text('not_selected') and selected_name != self.get_text('no_project_file') and selected_name != self.get_text('config_parse_failed'):
+                # 找到对应的配置信息
+                for config in self.available_configurations:
+                    if config['name'] == selected_name:
+                        self.selected_configuration = config
+                        self.log_message(self.get_text('config_selected').format(name=selected_name))
+                        self.log_message(self.get_text('output_directory').format(dir=config['output_dir_abs']))
+                        self.log_message(self.get_text('debug_mode').format(mode=config['debug']))
+                        break
+        except Exception as e:
+            self.log_message(f"{self.get_text('config_selection_failed')}: {e}")
 
 
 def main():

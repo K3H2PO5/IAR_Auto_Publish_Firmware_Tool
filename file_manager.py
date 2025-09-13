@@ -12,25 +12,27 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Dict
 
 
 class FileManager:
     """文件管理器"""
     
-    def __init__(self, config: dict, project_path: str = None):
+    def __init__(self, config: dict, project_path: str = None, path_manager=None):
         """
         初始化文件管理器
         
         Args:
             config: 配置字典，包含文件管理相关设置
             project_path: 项目目录路径，用于解析相对路径
+            path_manager: 路径管理器实例
         """
         self.config = config
         self.logger = logging.getLogger(__name__)
         
-        # 保存项目路径
+        # 保存项目路径和路径管理器
         self.project_path = project_path
+        self.path_manager = path_manager
         
         # 从配置中获取设置
         self.fw_publish_directory = config.get('fw_publish_directory', './fw_publish')
@@ -79,7 +81,7 @@ class FileManager:
     
     def generate_filename(self, commit_id: str, timestamp: Optional[datetime] = None, 
                          version: str = None, project_path: str = None, add_timestamp: bool = True, 
-                         file_extension: str = ".bin") -> str:
+                         file_extension: str = ".bin", configuration: Dict = None) -> str:
         """
         生成带时间戳、commit ID和git分支的文件名
         
@@ -103,23 +105,48 @@ class FileManager:
         # 获取git分支名称
         branch_name = self.get_git_branch(project_path)
         
+        # 确定项目名称
+        project_name = self.project_name
+        
+        # 确定配置名（根据配置数量决定是否包含配置名）
+        config_name = ""
+        if configuration and 'total_configs' in configuration and configuration['total_configs'] > 1:
+            # 多个配置时，需要包含配置名称
+            config_name = configuration.get('name', '')
+        
         # 生成文件名
         if add_timestamp:
             # 格式化时间戳
             time_str = timestamp.strftime("%Y%m%d_%H%M%S")
             if version:
-                # 包含版本号的文件名格式: 项目名_分支名_版本号_时间戳_commitID.扩展名
-                filename = f"{self.project_name}_{branch_name}_{version}_{time_str}_{short_commit_id}{file_extension}"
+                if config_name:
+                    # 包含版本号和配置名的文件名格式: 项目名_分支名_版本号_时间戳_commitID_配置名.扩展名
+                    filename = f"{project_name}_{branch_name}_{version}_{time_str}_{short_commit_id}_{config_name}{file_extension}"
+                else:
+                    # 包含版本号但不包含配置名的文件名格式: 项目名_分支名_版本号_时间戳_commitID.扩展名
+                    filename = f"{project_name}_{branch_name}_{version}_{time_str}_{short_commit_id}{file_extension}"
             else:
-                # 不包含版本号的文件名格式: 项目名_分支名_时间戳_commitID.扩展名
-                filename = f"{self.project_name}_{branch_name}_{time_str}_{short_commit_id}{file_extension}"
+                if config_name:
+                    # 不包含版本号但包含配置名的文件名格式: 项目名_分支名_时间戳_commitID_配置名.扩展名
+                    filename = f"{project_name}_{branch_name}_{time_str}_{short_commit_id}_{config_name}{file_extension}"
+                else:
+                    # 不包含版本号和配置名的文件名格式: 项目名_分支名_时间戳_commitID.扩展名
+                    filename = f"{project_name}_{branch_name}_{time_str}_{short_commit_id}{file_extension}"
         else:
             if version:
-                # 包含版本号但不包含时间戳的文件名格式: 项目名_分支名_版本号_commitID.扩展名
-                filename = f"{self.project_name}_{branch_name}_{version}_{short_commit_id}{file_extension}"
+                if config_name:
+                    # 包含版本号和配置名但不包含时间戳的文件名格式: 项目名_分支名_版本号_commitID_配置名.扩展名
+                    filename = f"{project_name}_{branch_name}_{version}_{short_commit_id}_{config_name}{file_extension}"
+                else:
+                    # 包含版本号但不包含时间戳和配置名的文件名格式: 项目名_分支名_版本号_commitID.扩展名
+                    filename = f"{project_name}_{branch_name}_{version}_{short_commit_id}{file_extension}"
             else:
-                # 不包含版本号和时间戳的文件名格式: 项目名_分支名_commitID.扩展名
-                filename = f"{self.project_name}_{branch_name}_{short_commit_id}{file_extension}"
+                if config_name:
+                    # 不包含版本号和时间戳但包含配置名的文件名格式: 项目名_分支名_commitID_配置名.扩展名
+                    filename = f"{project_name}_{branch_name}_{short_commit_id}_{config_name}{file_extension}"
+                else:
+                    # 不包含版本号、时间戳和配置名的文件名格式: 项目名_分支名_commitID.扩展名
+                    filename = f"{project_name}_{branch_name}_{short_commit_id}{file_extension}"
         
         self.logger.info(f"生成文件名: {filename}")
         return filename
@@ -280,7 +307,8 @@ class FileManager:
             return False, old_path
     
     def process_bin_file(self, source_bin_path: str, commit_id: str, 
-                        timestamp: Optional[datetime] = None, version: str = None) -> Tuple[bool, str, dict]:
+                        timestamp: Optional[datetime] = None, version: str = None, 
+                        configuration: Dict = None) -> Tuple[bool, str, dict]:
         """
         处理bin文件：重命名并移动到输出目录
         
@@ -312,7 +340,7 @@ class FileManager:
             result_info['file_size'] = os.path.getsize(source_bin_path)
             
             # 生成新文件名
-            new_filename = self.generate_filename(commit_id, timestamp, version, self.project_path)
+            new_filename = self.generate_filename(commit_id, timestamp, version, self.project_path, True, ".bin", configuration)
             result_info['new_filename'] = new_filename
             
             # 直接返回成功，不复制到输出目录
@@ -334,7 +362,7 @@ class FileManager:
     
     def publish_firmware(self, source_bin_path: str, commit_id: str, version: str,
                         timestamp: Optional[datetime] = None, add_timestamp: bool = True, 
-                        publish_out_file: bool = False) -> Tuple[bool, str, dict]:
+                        publish_out_file: bool = False, configuration: Dict = None) -> Tuple[bool, str, dict]:
         """
         发布固件到fw_publish目录
         
@@ -357,7 +385,9 @@ class FileManager:
             'new_filename': None,
             'destination_path': None,
             'file_size': 0,
-            'operation': 'publish'
+            'operation': 'publish',
+            'out_file': None,
+            'out_destination_path': None
         }
         
         try:
@@ -368,7 +398,7 @@ class FileManager:
             result_info['file_size'] = os.path.getsize(source_bin_path)
             
             # 生成发布文件名
-            new_filename = self.generate_filename(commit_id, timestamp, version, self.project_path, add_timestamp)
+            new_filename = self.generate_filename(commit_id, timestamp, version, self.project_path, add_timestamp, ".bin", configuration)
             result_info['new_filename'] = new_filename
             
             # 生成发布路径
@@ -388,11 +418,22 @@ class FileManager:
                 
                 # 如果需要发布.out文件
                 if publish_out_file:
-                    out_file_path = self._find_out_file(source_bin_path)
+                    self.logger.info(f"需要发布.out文件，publish_out_file: {publish_out_file}")
+                    out_file_path = None
+                    if self.path_manager:
+                        self.logger.info("path_manager存在，开始查找.out文件")
+                        out_file_path = self.path_manager.find_out_file(configuration=configuration)
+                    else:
+                        self.logger.warning("path_manager为None，无法查找.out文件")
+                    
                     if out_file_path and os.path.exists(out_file_path):
                         # 生成.out文件名（与bin文件名相同，但扩展名为.out）
                         out_filename = new_filename.replace('.bin', '.out')
                         out_destination_path = os.path.join(self.fw_publish_directory, out_filename)
+                        
+                        # 保存.out文件信息到result_info
+                        result_info['out_file'] = out_file_path
+                        result_info['out_destination_path'] = out_destination_path
                         
                         if self.copy_file(out_file_path, out_destination_path):
                             success_msg += f"\n.out文件发布成功: {out_destination_path}"
@@ -413,35 +454,6 @@ class FileManager:
             self.logger.error(error_msg)
             return False, error_msg, result_info
     
-    def _find_out_file(self, bin_file_path: str) -> Optional[str]:
-        """
-        根据bin文件路径查找对应的.out文件
-        
-        Args:
-            bin_file_path: bin文件路径
-            
-        Returns:
-            str: .out文件路径，如果未找到返回None
-        """
-        try:
-            # 获取bin文件所在目录
-            bin_dir = os.path.dirname(bin_file_path)
-            bin_filename = os.path.basename(bin_file_path)
-            
-            # 将.bin替换为.out
-            out_filename = bin_filename.replace('.bin', '.out')
-            out_file_path = os.path.join(bin_dir, out_filename)
-            
-            if os.path.exists(out_file_path):
-                self.logger.info(f"找到.out文件: {out_file_path}")
-                return out_file_path
-            else:
-                self.logger.warning(f"未找到.out文件: {out_file_path}")
-                return None
-                
-        except Exception as e:
-            self.logger.error(f"查找.out文件失败: {e}")
-            return None
     
     def list_published_firmware(self) -> List[dict]:
         """
@@ -477,7 +489,7 @@ class FileManager:
         return files
     
     def publish_to_remote(self, bin_file_path: str, release_note_path: str, branch_name: str = "main", 
-                         publish_out_file: bool = False) -> Tuple[bool, str, dict]:
+                         publish_out_file: bool = False, configuration: Dict = None) -> Tuple[bool, str, dict]:
         """
         发布到远程目录
         
@@ -564,9 +576,13 @@ class FileManager:
             
             # 复制.out文件（如果需要）
             if publish_out_file:
-                out_file_path = self._find_out_file(bin_file_path)
+                out_file_path = None
+                if self.path_manager:
+                    out_file_path = self.path_manager.find_out_file(configuration=configuration)
                 if out_file_path and os.path.exists(out_file_path):
-                    out_filename = os.path.basename(out_file_path)
+                    # 生成与bin文件对应的out文件名
+                    bin_filename = os.path.basename(bin_file_path)
+                    out_filename = bin_filename.replace('.bin', '.out')
                     remote_out_path = os.path.join(remote_sub_dir, out_filename)
                     
                     if self.copy_file(out_file_path, remote_out_path):
@@ -581,7 +597,7 @@ class FileManager:
                     else:
                         self.logger.warning(f"复制.out文件失败: {out_file_path}")
                 else:
-                    self.logger.warning(f"未找到对应的.out文件: {bin_file_path}")
+                    self.logger.warning(f"未找到对应的.out文件，源bin文件: {bin_file_path}")
             
             success_msg = f"远程发布成功\n"
             success_msg += f"远程目录: {remote_sub_dir}\n"

@@ -6,9 +6,8 @@
 """
 
 import os
-import glob
 import logging
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 from pathlib import Path
 from iar_project_analyzer import IARProjectAnalyzer
 
@@ -122,60 +121,73 @@ class PathManager:
             self.logger.error(f"查找IAR项目文件失败: {e}")
             return None
     
-    def find_bin_file(self, project_name: str = None) -> Optional[str]:
+    def find_bin_file(self, project_name: str = None, configuration: Dict = None) -> Optional[str]:
         """
         查找编译生成的bin文件
         
         Args:
             project_name: 项目名称
+            configuration: 配置信息（如果提供，优先使用）
             
         Returns:
             str: 找到的bin文件路径，未找到返回None
         """
         try:
-            # 常见的bin文件位置
-            search_paths = [
-                os.path.join(self.project_path, "EWARM", "Debug", "Exe"),
-                os.path.join(self.project_path, "EWARM", "Release", "Exe"),
-                os.path.join(self.project_path, "..", "EWARM", "Debug", "Exe"),
-                os.path.join(self.project_path, "..", "EWARM", "Release", "Exe"),
-                os.path.join(self.project_path, "..", "..", "EWARM", "Debug", "Exe"),
-                os.path.join(self.project_path, "..", "..", "EWARM", "Release", "Exe"),
-                os.path.join(self.project_path, "..", "..", "..", "EWARM", "Debug", "Exe"),
-                os.path.join(self.project_path, "..", "..", "..", "EWARM", "Release", "Exe")
-            ]
+            # 如果提供了配置信息，优先使用配置中的bin文件路径
+            if configuration and configuration.get('bin_file'):
+                bin_file = configuration['bin_file']
+                if os.path.exists(bin_file):
+                    self.logger.info(f"使用配置中的bin文件: {bin_file}")
+                    return bin_file
+                else:
+                    self.logger.warning(f"配置中的bin文件不存在: {bin_file}")
             
-            # 如果提供了项目名称，首先尝试查找特定名称的bin文件
-            if project_name:
-                for bin_dir in search_paths:
-                    if os.path.exists(bin_dir):
-                        specific_bin = os.path.join(bin_dir, f"{project_name}.bin")
-                        if os.path.exists(specific_bin):
-                            self.logger.info(f"找到bin文件: {specific_bin}")
-                            return specific_bin
+            # 如果配置中没有bin文件，直接返回None
+            self.logger.warning("配置中未提供bin文件路径")
             
-            # 如果直接路径找不到，尝试搜索所有bin文件
-            search_dirs = [
-                os.path.join(self.project_path, "EWARM"),
-                os.path.join(self.project_path, "..", "EWARM"),
-                os.path.join(self.project_path, "..", "..", "EWARM"),
-                os.path.join(self.project_path, "..", "..", "..", "EWARM")
-            ]
-            
-            for search_dir in search_dirs:
-                if os.path.exists(search_dir):
-                    for root, dirs, files in os.walk(search_dir):
-                        for file in files:
-                            if file.lower().endswith('.bin'):
-                                file_path = os.path.join(root, file)
-                                self.logger.info(f"找到bin文件: {file_path}")
-                                return file_path
-            
+            # 如果以上方法都失败，返回None
             self.logger.warning("未找到bin文件")
             return None
             
         except Exception as e:
             self.logger.error(f"查找bin文件失败: {e}")
+            return None
+    
+    
+    def find_out_file(self, project_name: str = None, configuration: Dict = None) -> Optional[str]:
+        """
+        查找编译生成的out文件
+        
+        Args:
+            project_name: 项目名称
+            configuration: 配置信息（如果提供，优先使用）
+            
+        Returns:
+            str: 找到的out文件路径，未找到返回None
+        """
+        try:
+            # 如果提供了配置信息，优先使用配置中的out文件路径
+            if configuration:
+                self.logger.info(f"查找out文件，配置信息: {configuration}")
+                if configuration.get('out_file'):
+                    out_file = configuration['out_file']
+                    self.logger.info(f"配置中的out文件路径: {out_file}")
+                    if os.path.exists(out_file):
+                        self.logger.info(f"使用配置中的out文件: {out_file}")
+                        return out_file
+                    else:
+                        self.logger.warning(f"配置中的out文件不存在: {out_file}")
+                else:
+                    self.logger.warning("配置中未提供out_file字段")
+            else:
+                self.logger.warning("未提供配置信息")
+            
+            # 如果配置中没有out文件，直接返回None
+            self.logger.warning("配置中未提供out文件路径")
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"查找out文件失败: {e}")
             return None
     
     def find_info_file(self, info_file_name: str) -> Optional[str]:
@@ -418,7 +430,7 @@ class PathManager:
         self.logger.info(f"当前bin_start_address: 0x{current_bin_start:X}")
         if current_bin_start == 0:
             self.logger.info("尝试自动获取flash偏移地址...")
-            flash_offset = self.get_flash_offset_from_project()
+            flash_offset = self.get_flash_offset_from_configuration()
             if flash_offset:
                 updated_config['binary_settings']['bin_start_address'] = flash_offset
                 self.logger.info(f"自动获取flash偏移地址成功: 0x{flash_offset:X}")
@@ -489,28 +501,31 @@ class PathManager:
             except:
                 return None
     
-    def get_flash_offset_from_project(self) -> Optional[int]:
+    def get_flash_offset_from_configuration(self, configuration: Dict = None) -> Optional[int]:
         """
-        从IAR项目文件中自动获取flash偏移地址
+        从配置信息中获取flash偏移地址
         
+        Args:
+            configuration: 配置信息（如果提供，优先使用）
+            
         Returns:
             int: flash偏移地址，失败返回None
         """
         try:
-            # 查找IAR项目文件
-            ewp_file = self.find_iar_project()
-            if not ewp_file:
-                self.logger.warning("未找到IAR项目文件，无法自动获取flash偏移地址")
-                return None
+            # 如果提供了配置信息，优先使用配置中的ICF文件
+            if configuration and configuration.get('icf_file'):
+                icf_file = configuration['icf_file']
+                if os.path.exists(icf_file):
+                    self.logger.info(f"使用配置中的ICF文件: {icf_file}")
+                    return self.iar_analyzer.analyze_icf_file(icf_file).get('intvec_start')
+                else:
+                    self.logger.warning(f"配置中的ICF文件不存在: {icf_file}")
             
-            # 使用IAR项目分析器获取flash偏移地址
-            flash_offset = self.iar_analyzer.get_flash_offset_from_project(ewp_file)
-            if flash_offset:
-                self.logger.info(f"从IAR项目文件自动获取flash偏移地址: 0x{flash_offset:X}")
-                return flash_offset
-            else:
-                self.logger.warning("无法从IAR项目文件获取flash偏移地址")
-                return None
+            # 如果配置中没有ICF文件，直接返回None
+            self.logger.warning("配置中未提供ICF文件路径")
+            
+            self.logger.warning("未找到有效的ICF文件")
+            return None
                 
         except Exception as e:
             self.logger.error(f"获取flash偏移地址失败: {e}")

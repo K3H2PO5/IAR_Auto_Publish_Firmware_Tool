@@ -26,7 +26,9 @@ python main.py
    Configure IAR installation path (e.g.: `C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3`)
 3. 设置项目路径（包含.ewp文件的目录）  
    Set project path (directory containing .ewp files)
-4. 选择配置文件（如：`main.c`）  
+4. 选择编译配置（如果项目有多个配置）  
+   Select build configuration (if project has multiple configurations)
+5. 选择配置文件（如：`main.c`）  
    Select configuration file (e.g.: `main.c`)
 5. **可选：配置远程发布** / **Optional: Configure Remote Publishing**：
    - 设置远程发布目录（绝对路径）/ Set remote publish directory (absolute path)

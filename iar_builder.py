@@ -9,21 +9,23 @@ import subprocess
 import os
 import logging
 import time
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 from pathlib import Path
 
 
 class IARBuilder:
     """IAR编译管理类"""
     
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, configuration: Dict = None):
         """
         初始化IAR编译器
         
         Args:
             config: 配置字典，包含IAR相关设置
+            configuration: 当前选择的配置信息
         """
         self.config = config
+        self.configuration = configuration
         self.logger = logging.getLogger(__name__)
         
         # 从配置中获取路径
@@ -68,11 +70,11 @@ class IARBuilder:
             return 'C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3/common/bin/IarBuild.exe'
         
         possible_paths = [
+            os.path.join(iar_dir, "common", "bin", "IarBuild.exe"),
             os.path.join(iar_dir, "bin", "IarBuild.exe"),
             os.path.join(iar_dir, "IarBuild.exe"),
             os.path.join(iar_dir, "arm", "bin", "IarBuild.exe"),
-            os.path.join(iar_dir, "EWARM", "bin", "IarBuild.exe"),
-            os.path.join(iar_dir, "common", "bin", "IarBuild.exe")
+            os.path.join(iar_dir, "EWARM", "bin", "IarBuild.exe")
         ]
         
         self.logger.info(f"搜索IAR可执行文件，尝试以下路径:")
@@ -415,66 +417,45 @@ class IARBuilder:
         
         return bin_exists
     
-    def get_bin_file_info(self) -> dict:
+    def get_bin_file_info(self, configuration: Dict = None) -> dict:
         """
-        获取bin文件信息 - 严格匹配ewp文件名
+        获取bin文件信息 - 优先使用配置信息
         
+        Args:
+            configuration: 配置信息（如果提供，优先使用）
+            
         Returns:
             dict: bin文件信息
         """
         try:
-            # 从项目根目录推导Exe目录
-            exe_dir = os.path.join(self.project_path, "EWARM", "Debug", "Exe")
+            # 优先使用传入的配置参数，如果没有则使用实例变量
+            config_to_use = configuration or self.configuration
+            self.logger.info(f"使用的配置: {config_to_use}")
             
-            if not os.path.exists(exe_dir):
-                self.logger.error(f"Exe目录不存在: {exe_dir}")
-                return {
-                    'exists': False,
-                    'path': '',
-                    'size': 0,
-                    'modified_time': None
-                }
+            # 如果提供了配置信息，优先使用配置中的bin文件路径
+            if config_to_use and config_to_use.get('bin_file'):
+                bin_file = config_to_use['bin_file']
+                if os.path.exists(bin_file):
+                    file_stat = os.stat(bin_file)
+                    return {
+                        'exists': True,
+                        'path': bin_file,
+                        'size': file_stat.st_size,
+                        'modified_time': file_stat.st_mtime
+                    }
+                else:
+                    self.logger.warning(f"配置中的bin文件不存在: {bin_file}")
+            else:
+                self.logger.warning("配置中未提供bin文件路径")
             
-            # 使用iar_project_path获取ewp文件名，严格匹配
-            if not self.iar_project_path:
-                self.logger.error("未找到ewp文件路径")
-                return {
-                    'exists': False,
-                    'path': '',
-                    'size': 0,
-                    'modified_time': None
-                }
-                
-            project_name = os.path.splitext(os.path.basename(self.iar_project_path))[0]
-            expected_bin_name = f"{project_name}.bin"
-            expected_bin_path = os.path.join(exe_dir, expected_bin_name)
-            
-            self.logger.info(f"查找bin文件 - ewp文件: {self.iar_project_path}")
-            self.logger.info(f"查找bin文件 - 项目名: {project_name}")
-            self.logger.info(f"查找bin文件 - 期望文件名: {expected_bin_name}")
-            self.logger.info(f"查找bin文件 - 期望路径: {expected_bin_path}")
-            self.logger.info(f"查找bin文件 - 文件是否存在: {os.path.exists(expected_bin_path)}")
-            
-            info = {
+            # 如果以上方法都失败，返回默认信息
+            self.logger.warning("未找到bin文件")
+            return {
                 'exists': False,
-                'path': expected_bin_path,
+                'path': '',
                 'size': 0,
                 'modified_time': None
             }
-            
-            if os.path.exists(expected_bin_path):
-                try:
-                    stat = os.stat(expected_bin_path)
-                    info['exists'] = True
-                    info['size'] = stat.st_size
-                    info['modified_time'] = time.ctime(stat.st_mtime)
-                    self.logger.info(f"找到项目bin文件: {expected_bin_path}, 大小: {stat.st_size} 字节")
-                except Exception as e:
-                    self.logger.error(f"获取bin文件信息失败: {e}")
-            else:
-                self.logger.error(f"未找到与ewp文件名一致的bin文件: {expected_bin_name}，编译失败")
-            
-            return info
             
         except Exception as e:
             self.logger.error(f"获取bin文件信息失败: {e}")
@@ -484,6 +465,7 @@ class IARBuilder:
                 'size': 0,
                 'modified_time': None
             }
+    
     
     def build_and_check(self) -> Tuple[bool, str, dict]:
         """

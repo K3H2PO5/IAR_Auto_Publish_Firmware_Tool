@@ -9,6 +9,31 @@
 
 An automated firmware publishing tool for IAR Embedded Workbench projects, supporting version management, Git integration, and binary file modification.
 
+
+### 主要功能 / Main Features
+
+#### 中文功能说明
+
+- 📦 **版本管理** - 版本号管理，自动递增/手动设置版本号
+- 🔄 **Git集成** - 自动提交版本更改，获取commit信息，支持自定义提交信息
+- 🔧 **IAR项目编译** - 自动编译IAR Embedded Workbench项目，支持多配置项目
+- 🛠️ **二进制修改** - 自动修改bin文件内容，在指定地址注入File Size、CRC、Hash和Git Commit信息
+- 📝 **发布说明** - 自动生成和管理Release Notes
+- 📁 **文件管理** - 自动重命名、复制和发布固件文件，支持本地和远程发布
+- 🚀 **一键执行** - 全流程自动化，从Git检查到文件发布
+- 🌐 **多语言支持** - 支持中文、繁体中文、英文界面
+
+#### English Features
+
+- 📦 **Version Management** - Version number management, automatically increment/manually set version numbers
+- 🔄 **Git Integration** - Automatically commit version changes, retrieve commit information, support custom commit messages
+- 🔧 **IAR Project Compilation** - Automatically compile IAR Embedded Workbench projects with multi-configuration support
+- 🛠️ **Binary Modification** - Automatically modify bin file content, inject File Size, CRC, Hash and Git Commit information at specified addresses
+- 📝 **Release Notes** - Automatically generate and manage Release Notes
+- 📁 **File Management** - Automatically rename, copy and publish firmware files, supports local and remote publishing
+- 🚀 **One-Click Execution** - Full workflow automation from Git check to file publishing
+- 🌐 **Multi-Language Support** - Supports Chinese, Traditional Chinese, and English interfaces
+
 ## 界面预览 / Interface Preview
 
 ### 主界面 / Main Interface
@@ -46,24 +71,13 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### 主要功能 / Main Features
-
-- 🔧 **IAR项目编译** - 自动编译IAR Embedded Workbench项目
-- 📦 **版本管理** - 自动递增固件版本号
-- 🔄 **Git集成** - 自动提交版本更改，获取commit信息
-- 🛠️ **二进制修改** - 自动修改bin文件，注入版本和Git信息
-- 🌐 **多语言支持** - 支持中文、繁体中文、英文界面
-- 📁 **文件管理** - 自动复制和发布固件文件
-- 📝 **发布说明** - 自动生成和管理Release Notes
 
 ## 文档 / Documentation
 
 - 📖 [功能概览](./docs/OVERVIEW.md) - 完整的功能说明和界面展示
 - 🚀 [快速开始指南](./docs/QUICKSTART.md) - 5分钟快速上手
 - 👤 [用户指南](./docs/USER_GUIDE.md) - 详细的使用说明和最佳实践
-- 👨‍💻 [开发者指南](./docs/DEVELOPER_GUIDE.md) - 开发环境设置和代码贡献
 - 📋 [更新日志](./docs/CHANGELOG.md) - 版本更新历史
-- 🤝 [贡献指南](./docs/CONTRIBUTING.md) - 如何参与项目开发
 
 ## 系统要求 / System Requirements
 

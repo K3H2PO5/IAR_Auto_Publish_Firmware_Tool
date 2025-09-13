@@ -42,64 +42,61 @@ def increment_version():
     """Increment tool version number"""
     print("Incrementing tool version...")
     try:
-        # Run the version increment script
-        result = subprocess.run([sys.executable, "increment_tool_version.py"], 
-                              capture_output=True, text=True, encoding='utf-8')
-        if result.returncode == 0:
-            # Get the last line which should be the version number
-            lines = result.stdout.strip().split('\n')
-            new_version = lines[-1].strip() if lines else ""
-            if new_version and re.match(r'\d+\.\d+\.\d+\.\d+', new_version):
-                print(f"[OK] Tool version incremented to: {new_version}")
-                return new_version
-            else:
-                print(f"[ERROR] Invalid version format: {new_version}")
-                return None
+        from tool_version_manager import ToolVersionManager
+        
+        # Create version manager instance
+        version_manager = ToolVersionManager()
+        
+        # Increment and update version
+        success, new_version = version_manager.increment_and_update_advanced()
+        
+        if success and new_version:
+            print(f"[OK] Tool version incremented to: {new_version}")
+            return new_version
         else:
             print("[ERROR] Version increment failed")
-            print(f"Error output: {result.stderr}")
             return None
     except Exception as e:
         print(f"[ERROR] Version increment failed: {e}")
         return None
 
-def update_hardcoded_version(version):
-    """Update hardcoded version in tool_version_manager.py"""
+def update_version_file(version):
+    """Update version in version.py"""
     try:
-        tool_version_manager_path = "tool_version_manager.py"
-        if not os.path.exists(tool_version_manager_path):
-            print(f"[ERROR] File not found: {tool_version_manager_path}")
+        version_file_path = "version.py"
+        if not os.path.exists(version_file_path):
+            print(f"[ERROR] File not found: {version_file_path}")
             return False
         
-        with open(tool_version_manager_path, 'r', encoding='utf-8') as f:
+        with open(version_file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        pattern = r'hardcoded_version = "([^"]+)"\s*#.*'
-        replacement = f'hardcoded_version = "{version}"  # 这个版本号需要在打包时更新'
+        pattern = r'VERSION\s*=\s*["\']([^"\']+)["\'](?:\s*#.*)?'
+        replacement = f'VERSION = "{version}"'
         
         if re.search(pattern, content):
             new_content = re.sub(pattern, replacement, content)
-            with open(tool_version_manager_path, 'w', encoding='utf-8') as f:
+            with open(version_file_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
-            print(f"[OK] Updated hardcoded version to: {version}")
+            print(f"[OK] Updated version to: {version}")
             return True
         else:
-            print("[ERROR] Hardcoded version pattern not found")
+            print("[ERROR] Version pattern not found in version.py")
             return False
     except Exception as e:
-        print(f"[ERROR] Failed to update hardcoded version: {e}")
+        print(f"[ERROR] Failed to update version: {e}")
         return False
 
 def get_current_version():
-    """Get current version from main.py"""
+    """Get current version from version.py"""
     try:
-        with open("main.py", "r", encoding="utf-8") as f:
+        with open("version.py", "r", encoding="utf-8") as f:
             content = f.read()
-        match = re.search(r'__version__ = "([^"]+)"', content)
+        match = re.search(r'VERSION\s*=\s*["\']([^"\']+)["\']', content)
         if match:
             return match.group(1)
         else:
-            print(f"[ERROR] Failed to get version: {e}")
+            print("[ERROR] Failed to get version: Version pattern not found in version.py")
             return None
     except Exception as e:
         print(f"[ERROR] Failed to get version: {e}")
@@ -203,8 +200,8 @@ def build_exe():
         print("Failed to increment version")
         return False
     
-    # Update hardcoded version
-    update_hardcoded_version(new_version)
+    # Update version file
+    update_version_file(new_version)
     
     # Create spec file
     spec_name = SPEC_NAME_BASE
@@ -238,41 +235,20 @@ def create_release_package(final_version):
         print("[ERROR] Exe file not found")
         return False
     
-    # Copy additional files
-    additional_files = [
-        "user_config.example.json",
-        "README.md"
-    ]
-    
-    for file in additional_files:
-        if os.path.exists(file):
-            shutil.copy2(file, release_dir)
-            print(f"[OK] Copied {file} to release directory")
-    
-    # Copy docs directory
-    if os.path.exists("docs"):
-        docs_dest = release_dir / "docs"
-        if docs_dest.exists():
-            if docs_dest.is_dir():
-                shutil.rmtree(docs_dest)
-            else:
-                docs_dest.unlink()
-        shutil.copytree("docs", docs_dest)
-        print("[OK] Copied docs directory to release directory")
+    # 只拷贝exe文件，不拷贝其他文件
+    print("[INFO] Only copying exe file to release directory")
     
     # Create usage guide
     usage_guide = f"""# IAR Firmware Publish Tool v{final_version}
 
 ## Usage
 1. Run {exe_name}.exe
-2. Configure settings
+2. Configure settings in the application
 3. Start building
 
-## Files
-- {exe_name}.exe - Main executable
-- user_config.example.json - Example user configuration
-- docs/ - Documentation
-- README.md - Project readme
+## Configuration
+The application will create a user_config.json file automatically when you first run it.
+You can modify the settings through the application's settings interface.
 
 ## Version
 {final_version}

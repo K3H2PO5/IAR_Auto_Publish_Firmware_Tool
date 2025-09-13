@@ -7,10 +7,16 @@ IAR项目分析器模块
 
 import os
 import re
-import xml.etree.ElementTree as ET
 import logging
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List
 from pathlib import Path
+
+try:
+    from lxml import etree as ET
+    HAS_LXML = True
+except ImportError:
+    import xml.etree.ElementTree as ET
+    HAS_LXML = False
 
 
 class IARProjectAnalyzer:
@@ -22,13 +28,13 @@ class IARProjectAnalyzer:
     
     def analyze_ewp_file(self, ewp_path: str) -> Optional[Dict]:
         """
-        分析IAR项目文件(.ewp)，提取ICF文件路径
+        分析IAR项目文件(.ewp)，提取ICF文件路径和配置信息
         
         Args:
             ewp_path: IAR项目文件路径
             
         Returns:
-            Dict: 包含ICF文件路径和项目信息的字典
+            Dict: 包含ICF文件路径、配置信息和项目信息的字典
         """
         try:
             if not os.path.exists(ewp_path):
@@ -41,64 +47,27 @@ class IARProjectAnalyzer:
             
             result = {
                 'project_path': ewp_path,
-                'icf_files': [],
+                'configurations': [],
                 'project_name': os.path.splitext(os.path.basename(ewp_path))[0],
                 'project_dir': os.path.dirname(ewp_path)
             }
             
-            # 查找ICF文件引用
-            # IAR项目文件中的ICF文件通常在以下位置：
-            # 1. <group><name>Linker files</name><file><name>xxx.icf</name></file></group>
-            # 2. <name>IlinkIcfFile</name><state>$PROJ_DIR$\xxx.icf</state>
+            # 解析配置信息
+            configurations = self._parse_configurations(root, result['project_dir'])
+            result['configurations'] = configurations
             
-            # 方法1: 在group中查找
-            for group in root.findall('.//group'):
-                group_name = group.find('name')
-                if group_name is not None and 'linker' in group_name.text.lower():
-                    for file_elem in group.findall('file'):
-                        name_elem = file_elem.find('name')
-                        if name_elem is not None and name_elem.text.endswith('.icf'):
-                            icf_file = name_elem.text
-                            # 构建完整路径
-                            if os.path.isabs(icf_file):
-                                full_path = icf_file
-                            else:
-                                full_path = os.path.join(result['project_dir'], icf_file)
-                            
-                            result['icf_files'].append({
-                                'name': icf_file,
-                                'path': full_path,
-                                'exists': os.path.exists(full_path)
-                            })
-                            self.logger.info(f"找到ICF文件: {full_path}")
-            
-            # 方法2: 查找IlinkIcfFile配置
-            for name_elem in root.findall('.//name'):
-                if name_elem.text == 'IlinkIcfFile':
-                    # 找到对应的state元素
-                    parent = name_elem.getparent()
-                    if parent is not None:
-                        state_elem = parent.find('state')
-                        if state_elem is not None and state_elem.text:
-                            icf_file = state_elem.text
-                            # 处理$PROJ_DIR$宏
-                            if icf_file.startswith('$PROJ_DIR$'):
-                                icf_file = icf_file.replace('$PROJ_DIR$', result['project_dir'])
-                            elif not os.path.isabs(icf_file):
-                                icf_file = os.path.join(result['project_dir'], icf_file)
-                            
-                            result['icf_files'].append({
-                                'name': os.path.basename(icf_file),
-                                'path': icf_file,
-                                'exists': os.path.exists(icf_file)
-                            })
-                            self.logger.info(f"找到ICF文件: {icf_file}")
-                    break
-            
-            # 如果没找到ICF文件引用，直接报错
-            if not result['icf_files']:
-                self.logger.error("在项目文件中未找到ICF文件引用，请检查项目配置")
-                return None
+            # 为每个配置查找输出文件
+            for config in configurations:
+                # 记录ICF文件信息
+                if config.get('icf_file'):
+                    icf_file = config['icf_file']
+                    self.logger.info(f"找到ICF文件: {icf_file} (配置: {config['name']})")
+                else:
+                    self.logger.warning(f"配置 {config['name']} 中未找到ICF文件")
+                
+                # 查找编译输出文件
+                build_outputs = self.find_build_outputs(ewp_path, config, len(configurations))
+                config.update(build_outputs)
             
             return result
             
@@ -106,6 +75,144 @@ class IARProjectAnalyzer:
             self.logger.error(f"分析IAR项目文件失败: {e}")
             return None
     
+    def find_build_outputs(self, project_path: str, configuration: Dict, total_configs: int = 1) -> Dict:
+        """
+        查找指定配置的编译输出文件(bin和out)
+        
+        Args:
+            project_path: 项目路径
+            configuration: 配置信息
+            
+        Returns:
+            Dict: 包含bin和out文件路径的字典
+        """
+        result = {
+            'bin_file': None,
+            'out_file': None
+        }
+        
+        try:
+            output_dir = configuration.get('output_dir_abs', '')
+            config_name = configuration.get('name', '')
+            project_name = os.path.splitext(os.path.basename(project_path))[0]
+            self.logger.info(f"原始项目名: {project_name} (从文件: {os.path.basename(project_path)})")
+            self.logger.info(f"当前配置名: {config_name}")
+            
+            # 如果项目名包含配置名后缀，移除它
+            if config_name and project_name.endswith(f"_{config_name}"):
+                project_name = project_name[:-len(f"_{config_name}")]
+                self.logger.info(f"移除配置名后缀后的项目名: {project_name}")
+            else:
+                self.logger.info(f"项目名不包含配置名后缀，保持原样: {project_name}")
+            
+            self.logger.info(f"最终项目名: {project_name}")
+            
+            if not output_dir or not os.path.exists(output_dir):
+                self.logger.warning(f"配置 {config_name} 的输出目录不存在: {output_dir}")
+                return result
+            
+            # 构建文件名
+            self.logger.info(f"配置总数: {total_configs}")
+            # IAR编译输出文件名始终是项目名，不包含配置名
+            bin_filename = f"{project_name}.bin"
+            out_filename = f"{project_name}.out"
+            self.logger.info(f"IAR编译输出文件名: {bin_filename}")
+            
+            bin_file_path = os.path.join(output_dir, bin_filename)
+            out_file_path = os.path.join(output_dir, out_filename)
+            
+            # 直接设置文件路径，不检查文件是否存在
+            result['bin_file'] = bin_file_path
+            result['out_file'] = out_file_path
+            result['total_configs'] = total_configs
+            
+            self.logger.info(f"配置 {config_name}: 生成文件路径")
+            self.logger.info(f"  bin文件: {bin_file_path}")
+            self.logger.info(f"  out文件: {out_file_path}")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"查找编译输出文件失败: {e}")
+            return result
+    
+    def _parse_configurations(self, root, project_dir: str) -> List[Dict]:
+        """
+        解析IAR项目文件中的配置信息
+        
+        Args:
+            root: XML根节点
+            project_dir: 项目目录路径
+            
+        Returns:
+            List[Dict]: 配置信息列表
+        """
+        configurations = []
+        
+        try:
+            # 查找所有configuration节点
+            for config_elem in root.findall('.//configuration'):
+                config_info = {
+                    'name': '',
+                    'output_dir': '',
+                    'output_dir_abs': '',
+                    'debug': False,
+                    'toolchain': '',
+                    'icf_file': ''
+                }
+                
+                # 获取配置名称
+                name_elem = config_elem.find('name')
+                if name_elem is not None:
+                    config_info['name'] = name_elem.text
+                
+                # 获取debug状态
+                debug_elem = config_elem.find('debug')
+                if debug_elem is not None:
+                    config_info['debug'] = debug_elem.text == '1'
+                
+                # 获取工具链
+                toolchain_elem = config_elem.find('toolchain/name')
+                if toolchain_elem is not None:
+                    config_info['toolchain'] = toolchain_elem.text
+                
+                # 查找输出目录
+                # 通常在 <option><name>ExePath</name><state>Debug\Exe</state></option>
+                for option in config_elem.findall('.//option'):
+                    name_elem = option.find('name')
+                    if name_elem is not None and name_elem.text == 'ExePath':
+                        state_elem = option.find('state')
+                        if state_elem is not None:
+                            config_info['output_dir'] = state_elem.text
+                            # 构建绝对路径
+                            if os.path.isabs(state_elem.text):
+                                config_info['output_dir_abs'] = state_elem.text
+                            else:
+                                config_info['output_dir_abs'] = os.path.join(project_dir, state_elem.text)
+                
+                # 查找ICF文件配置
+                for option in config_elem.findall('.//option'):
+                    name_elem = option.find('name')
+                    if name_elem is not None and name_elem.text == 'IlinkIcfFile':
+                        state_elem = option.find('state')
+                        if state_elem is not None:
+                            icf_file = state_elem.text
+                            # 处理$PROJ_DIR$宏
+                            if icf_file.startswith('$PROJ_DIR$'):
+                                icf_file = icf_file.replace('$PROJ_DIR$', project_dir)
+                            elif not os.path.isabs(icf_file):
+                                icf_file = os.path.join(project_dir, icf_file)
+                            config_info['icf_file'] = icf_file
+                
+                if config_info['name']:  # 只添加有效的配置
+                    configurations.append(config_info)
+                    self.logger.info(f"找到配置: {config_info['name']}, 输出目录: {config_info['output_dir_abs']}, Debug: {config_info['debug']}")
+            
+            return configurations
+            
+        except Exception as e:
+            self.logger.error(f"解析配置信息失败: {e}")
+            return []
     
     def analyze_icf_file(self, icf_path: str) -> Optional[Dict]:
         """
@@ -196,47 +303,37 @@ class IARProjectAnalyzer:
             self.logger.error(f"分析ICF文件失败: {e}")
             return None
     
-    def get_flash_offset_from_project(self, ewp_path: str) -> Optional[int]:
+    def get_flash_offset_from_configuration(self, configuration: Dict) -> Optional[int]:
         """
-        从IAR项目文件中获取flash偏移地址
+        从配置信息中获取flash偏移地址
         
         Args:
-            ewp_path: IAR项目文件路径
+            configuration: 配置信息
             
         Returns:
             int: flash偏移地址，失败返回None
         """
         try:
-            self.logger.info(f"开始分析IAR项目文件: {ewp_path}")
-            # 分析项目文件
-            project_info = self.analyze_ewp_file(ewp_path)
-            if not project_info:
-                self.logger.error("项目文件分析失败")
-                return None
-                
-            if not project_info['icf_files']:
-                self.logger.error("未找到ICF文件")
+            if not configuration.get('icf_file'):
+                self.logger.error("配置中未找到ICF文件路径")
                 return None
             
-            self.logger.info(f"找到 {len(project_info['icf_files'])} 个ICF文件")
-            # 分析第一个可用的ICF文件
-            for i, icf_info in enumerate(project_info['icf_files']):
-                self.logger.info(f"检查ICF文件 {i+1}: {icf_info['path']} (存在: {icf_info['exists']})")
-                if icf_info['exists']:
-                    icf_result = self.analyze_icf_file(icf_info['path'])
-                    if icf_result and icf_result['intvec_start']:
-                        self.logger.info(f"从项目 {ewp_path} 获取到flash偏移地址: 0x{icf_result['intvec_start']:X}")
-                        return icf_result['intvec_start']
-                    else:
-                        self.logger.warning(f"ICF文件 {icf_info['path']} 解析失败或无intvec_start")
-                else:
-                    self.logger.warning(f"ICF文件不存在: {icf_info['path']}")
+            icf_file = configuration['icf_file']
+            if not os.path.exists(icf_file):
+                self.logger.error(f"ICF文件不存在: {icf_file}")
+                return None
             
-            self.logger.error("所有ICF文件都无法解析或不存在")
-            return None
+            self.logger.info(f"分析ICF文件: {icf_file}")
+            icf_result = self.analyze_icf_file(icf_file)
+            if icf_result and icf_result.get('intvec_start'):
+                self.logger.info(f"从ICF文件获取flash偏移地址: 0x{icf_result['intvec_start']:X}")
+                return icf_result['intvec_start']
+            else:
+                self.logger.error("ICF文件中未找到flash偏移地址")
+                return None
             
         except Exception as e:
-            self.logger.error(f"从项目文件获取flash偏移地址失败: {e}")
+            self.logger.error(f"分析ICF文件失败: {e}")
             return None
     
     def find_ewp_file(self, project_path: str) -> Optional[str]:
@@ -300,8 +397,12 @@ def test_iar_project_analyzer():
         print(f"项目信息: {project_info}")
         
         # 测试获取flash偏移地址
-        flash_offset = analyzer.get_flash_offset_from_project(ewp_file)
-        print(f"Flash偏移地址: 0x{flash_offset:X}" if flash_offset else "未找到")
+        if project_info and project_info.get('configurations'):
+            config = project_info['configurations'][0]  # 使用第一个配置
+            flash_offset = analyzer.get_flash_offset_from_configuration(config)
+            print(f"Flash偏移地址: 0x{flash_offset:X}" if flash_offset else "未找到")
+        else:
+            print("未找到配置信息")
 
 
 if __name__ == "__main__":

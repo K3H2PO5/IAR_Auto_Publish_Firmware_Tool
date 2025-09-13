@@ -22,6 +22,7 @@
    - 点击"设置"按钮 / Click "Settings" button
    - 配置IAR安装路径 / Configure IAR installation path
    - 设置项目路径 / Set project path
+   - 选择编译配置（支持多配置项目）/ Select build configuration (supports multi-configuration projects)
    - 配置bin起始地址 / Configure bin start address
    - 选择配置文件 / Select configuration file
 
@@ -29,6 +30,11 @@
    - 点击"开始编译"按钮 / Click "Start Compilation" button
    - 输入更新信息 / Input update information
    - 等待编译完成 / Wait for compilation to complete
+
+4. **一键执行** / **One-Click Execution**：
+   - 点击"一键执行"按钮 / Click "One-Click Execution" button
+   - 自动完成Git检查、版本检查、编译、文件处理等全流程 / Automatically complete Git check, version check, compilation, file processing workflow
+   - 无需手动干预，全流程自动化 / No manual intervention required, fully automated workflow
 
 ## 详细配置 / Detailed Configuration
 
@@ -387,4 +393,4 @@ If you encounter problems during use, please:
 
 ---
 
-*最后更新 / Last Updated: 2025-01-09 (v1.0.3.8)*
+*最后更新 / Last Updated: 2025-01-13 (v1.0.4.2)*
