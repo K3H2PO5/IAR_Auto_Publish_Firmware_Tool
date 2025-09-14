@@ -5,6 +5,26 @@
 [![Windows](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/windows)
 [![IAR](https://img.shields.io/badge/IAR-Embedded%20Workbench-orange.svg)](https://www.iar.com/iar-embedded-workbench/)
 
+
+## ⚠️ 重要通知 / Important Notice
+
+**本工具已停止更新** / **This tool is no longer maintained**
+
+🚀 **新版本已发布** / **New version available**: [Embedded Firmware Manager](https://github.com/K3H2PO5/Embedded_Firmware_Manager)
+
+**新版本特性** / **New version features**:
+- ✅ 支持IAR和MDK双工具链 / Supports both IAR and MDK toolchains
+- ✅ 模块化架构设计 / Modular architecture design
+- ✅ 可扩展支持更多编译器 / Extensible support for more compilers
+- ✅ 更好的错误处理和用户体验 / Better error handling and user experience
+
+**迁移建议** / **Migration recommendation**:
+- 如果您需要MDK支持或更多功能，建议迁移到新版本 / If you need MDK support or more features, we recommend migrating to the new version
+- 如果仅使用IAR编译器，可以继续使用本工具 / If you only use IAR compiler, you can continue using this tool
+
+---
+
+
 一个用于IAR Embedded Workbench项目的自动化固件发布工具，支持版本管理、Git集成和二进制文件修改。
 
 An automated firmware publishing tool for IAR Embedded Workbench projects, supporting version management, Git integration, and binary file modification.
